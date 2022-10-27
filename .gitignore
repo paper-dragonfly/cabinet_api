@@ -1,0 +1,6 @@
+.venv_cabapi/*
+*.pyc
+__pycache__/*
+tests/*
+config/*
+db_setup.py 
