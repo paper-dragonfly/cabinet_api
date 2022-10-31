@@ -7,7 +7,7 @@ import pdb
 ENV = os.getenv('ENV')
 
 
-def get_conn_str(env:str=ENV, config_file:str='config/config.yaml') ->str:
+def get_conn_str(env: str=ENV, config_file: str='config/config.yaml') -> str:
     with open(f'{config_file}', 'r') as f:
         config_dict = yaml.safe_load(f)
     conn_str = config_dict[env]['conn_str']
@@ -82,9 +82,7 @@ def get_current_metadata(table:str, entry_id:int, cur, env:str=ENV)-> dict:
 
 def make_full_update_dict(updates:dict, old_metadata:dict):
     full_update = updates 
-    for key in old_metadata.keys():
-        if not key in full_update:
-            full_update[key]=old_metadata[key]
+    newdict = {**old, **new}
     full_update.pop('entry_id', 'No entry_id key') #or use del ?
     return full_update
 

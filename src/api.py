@@ -4,6 +4,7 @@ from src.api_fns import db_connect
 import src.api_fns as f
 import json 
 import os
+from src.classes import AllTables
 import pdb 
 
 ENV = os.getenv('ENV')
@@ -23,7 +24,7 @@ def create_app(env):
     #TODO: learn about bytea postgres type. 
     def store_blob():
         if request.method == 'GET':
-            pass
+            raise NotImplementedError
         if request.method == 'POST':
             blob_bytes = request.get_json()['blob_bytes']
             blob_id = f.add_blob(blob_bytes) 
@@ -32,25 +33,27 @@ def create_app(env):
     # NOTE: each data type has its own end point with predefined columns
     # any changes to the table must be done in source code, not by user
 
-    @app.route('/drawer', methods=['GET','POST'])
-    def drawer():
+    @app.route('/testtable', methods=['GET','POST'])
+    def test_table():
         try:
-            conn, cur = db_connect()
-            table_name = 'drawer'
-            feilds = ['entry_id','photo_id','channel','title', 'blob_id']
+            conn, cur = db_connect(env=env)
+            table_name = 'fruit'
+            # feilds = ['entry_id','photo_id','channel','title', 'blob_id']
+            feilds = ['entry_id','fruit_name','color','blob_id']
             if request.method == 'GET':
-                pass
+                raise NotImplementedError
             if request.method == 'POST': 
-                post_data = request.get_json()
-                new:bool = post_data['new_blob']
+                post_data:AllTables = AllTables.parse_obj(request.get_json()) 
+                new:bool = post_data.new_blob
+                metadata:dict = post_data.metadata
                 if new:
-                    entry_id = f.add_entry(table_name, post_data['metadata'])
+                    entry_id = f.add_entry(table_name, metadata, cur, env)
                     return json.dumps({'status_code':200, 'entry_id':entry_id})
-                else:
-                    updates:dict = post_data['update_dict']
-                    current_metadata:dict = f.get_current_metadata(table_name, entry_id)
-                    updated_metadata: dict = f.make_full_update_dict(updates, current_metadata)
-                    entry_id = f.add_entry(table_name, updated_metadata)
+                else: #update
+                    old_entry_id = post_data.old_entry_id
+                    current_metadata:dict = f.get_current_metadata(table_name, old_entry_id)
+                    updated_metadata: dict = f.make_full_update_dict(metadata, current_metadata)
+                    entry_id = f.add_entry(table_name, updated_metadata, cur, env)
                     return json.dumps({'status_code':200, 'entry_id': entry_id})
         finally:
             cur.close()
