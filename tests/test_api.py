@@ -1,5 +1,6 @@
 import json
 import pdb
+import base64
 
 import pytest
 
@@ -63,12 +64,16 @@ class TestBlob:
     def test_post_blob(self, client):
         """
         GIVEN a flask app
-        WHEN a POST request with table, metadata and blob_bytes is submitted to /blob
+        WHEN a POST request with table, metadata and blob_b64s (blob->str(base64)) is submitted to /blob
         THEN assert returns int(entry_id)
         """
+        #create blob_b64s
         test_blob = 'a perfectly passionate poem about pineapples'
-        blob_bytes = test_blob.encode('utf-8') 
-        response=client.post("/blob",data=json.dumps({'table':'fruit', 'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_bytes':blob_bytes}),content_type='application/json')
+        blob_bytes = test_blob.encode('utf-8')
+        blob_base64 = base64.b64encode(blob_bytes)
+        blob_b64s = str(blob_base64)
+        # POST to API: /blob endpoint, capture response
+        response=client.post("/blob",data=json.dumps({'table_name':'fruit', 'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_b64s':blob_b64s}),content_type='application/json')
         # check API response is of expected type 
         assert type(json.loads(response.data.decode("ASCII"))) == int 
         #check entry is in db

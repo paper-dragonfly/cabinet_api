@@ -29,10 +29,12 @@ def get_env_host(env:str=ENV, config_file:str='config/config.yaml')->str:
     return env_host
 
 
-def add_blob(blob_bytes:str, cur) -> str: 
+def add_blob(blob_b64s:str, cur) -> str: 
     # TODO: add shaw256 hash as blob_id
-    blob_id = sha256(blob_bytes).hexdigest()
-    cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,f'{blob_bytes}',))
+    #convert blob_b64s -> blob_bytes
+    blob_b64_bytes = blob_b64s.encode('ascii')
+    blob_id = sha256(blob_b64_bytes).hexdigest()
+    cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,f'{blob_b64s}',))
     return blob_id
 
 

@@ -1,5 +1,6 @@
 import pdb
 import re
+import base64
 
 import psycopg2
 
@@ -42,11 +43,13 @@ class TestInsert:
         """
         #create test blob
         s = 'Hello World'
-        myblob = s.encode('utf-8')
+        myblob:bytes = s.encode('ascii')
+        blob_b64 = base64.b64encode(myblob)
+        blob_b64_str = blob_b64.decode('ascii')
         # pass to fn
         try:
             conn, cur = f.db_connect('testing')
-            resp = f.add_blob(myblob,cur)
+            resp = f.add_blob(blob_b64_str,cur)
             assert type(resp) == str
             assert len(resp) == 64
         finally:

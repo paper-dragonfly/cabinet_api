@@ -48,11 +48,11 @@ def create_app(env):
                 table_name = new_blob_info.table_name
                 if not table_name in metadata_classes.keys():
                     return json.dumps({'status_code':400, 'body':f'{table_name} table does not exist'})
-                blob_bytes = new_blob_info.blob_bytes
+                blob_b64s = new_blob_info.blob_b64s
                 # turn metadata into instance of specified metadata_class to enforce type hints
                 metadata_inst = metadata_classes[f'{table_name}'].parse_obj(new_blob_info.metadata)
                 # add blob to db 
-                blob_id = f.add_blob(blob_bytes, cur)
+                blob_id = f.add_blob(blob_b64s, cur)
                 # create dict with new_entry metadata including blob_id
                 metadata_inst.blob_id = blob_id 
                 metadata_dict = metadata_inst.dict()

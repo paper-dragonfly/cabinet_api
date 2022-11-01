@@ -8,7 +8,7 @@ from pydantic import BaseModel
 class BlobInfo(BaseModel):
     table_name:str
     metadata:dict
-    blob_bytes:bytes
+    blob_b64s:str
 
 class Fruit(BaseModel):
     entry_id:Optional[int]
