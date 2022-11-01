@@ -14,7 +14,7 @@ class Fruit(BaseModel):
     entry_id:Optional[int]
     fruit_name:str 
     fruit_color: Optional[str]
-    blob_id:int = 0
+    blob_id:str = None
 
 
 metadata_classes = {'fruit':Fruit}

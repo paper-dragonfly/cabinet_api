@@ -36,44 +36,31 @@ def test_store_blob(client):
     pass 
 
 
-def test_drawer_new(client):
-    """
-    GIVEN a flask app 
-    WHEN a POST request with {'new':True} is submitted to /drawer
-    THEN assert entry is added to db an int(entry_id) is returned 
-    """
-    #clear db 
-    clear_all_tables()
-    # submit POST request
-    response=client.post("/testtable",data=json.dumps({'new_blob':True,'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}}),content_type='application/json')
-    assert type(json.loads(response.data.decode("ASCII"))) == int 
-    assert response.status_code == 200
-
-def test_drawer_update(client):
-    """
-    GIVEN a flask app
-    WHEN a POST request with {'new':False} is submitted to /drawer
-    THEN assert entry is soft-updated in db and int(update entry_id) is returned
-    """
-    #clear db
-    clear_all_tables()
-    try:
-        # populate with original entry
-        conn, cur = db_connect('testing')
-        cur.execute("INSERT INTO blob VALUES(%s)",(1,))
-        cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s)",(4,'plum','purple',1))
-        # submit POST request
-        response = client.post("/testtable", data=json.dumps({"new_blob":False,"metadata":{'fruit_color':'violet'}, 'old_entry_id':4}),content_type='application/json')
-        assert response.status_code == 200 
-        # assert 
-    finally: 
-        cur.close()
-        conn.close() 
+# def test_drawer_update(client):
+#     """
+#     GIVEN a flask app
+#     WHEN a POST request with {'new':False} is submitted to /drawer
+#     THEN assert entry is soft-updated in db and int(update entry_id) is returned
+#     """
+#     #clear db
+#     clear_all_tables()
+#     try:
+#         # populate with original entry
+#         conn, cur = db_connect('testing')
+#         cur.execute("INSERT INTO blob VALUES(%s)",(1,))
+#         cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s)",(4,'plum','purple',1))
+#         # submit POST request
+#         response = client.post("/testtable", data=json.dumps({"new_blob":False,"metadata":{'fruit_color':'violet'}, 'old_entry_id':4}),content_type='application/json')
+#         assert response.status_code == 200 
+#         # assert 
+#     finally: 
+#         cur.close()
+#         conn.close() 
 
 class TestBlob:
     clear_all_tables()
 
-    def test_post_blob(client):
+    def test_post_blob(self, client):
         """
         GIVEN a flask app
         WHEN a POST request with table, metadata and blob_bytes is submitted to /blob
@@ -90,6 +77,7 @@ class TestBlob:
             cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
             r = cur.fetchall()
             assert len(r) == 1
+            assert len(r[0]) == 4
             assert 'pineapple' in r[0]
         finally:
             cur.close()

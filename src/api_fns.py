@@ -1,10 +1,10 @@
 import os
 import pdb
+from hashlib import sha256
 
 import psycopg2
 import yaml
 
-from src.classes import table_class
 
 ENV = os.getenv('ENV')
 
@@ -29,19 +29,18 @@ def get_env_host(env:str=ENV, config_file:str='config/config.yaml')->str:
     return env_host
 
 
-def add_blob(blob_bytes:str, cur) -> int:
+def add_blob(blob_bytes:str, cur) -> str: 
     # TODO: add shaw256 hash as blob_id
-    cur.execute('INSERT INTO blob (bytes) VALUES (%s)', (f'{blob_bytes}',))
-    cur.execute('SELECT MAX(blob_id) FROM blob')
-    blob_id = cur.fetchone()[0]
+    blob_id = sha256(blob_bytes).hexdigest()
+    cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,f'{blob_bytes}',))
     return blob_id
 
 
 def build_insert_query(table:str, metadata:dict) -> tuple:
     # TODO: NICO I don't think this is vulnerable to an injection attack
     # generate str of column names 
+    del metadata['entry_id']
     columns:list = metadata.keys()
-    del columns['entry_id']
     col_str = ""
     for i in columns:
         col_str += i + ', '

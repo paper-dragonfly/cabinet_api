@@ -11,7 +11,7 @@ def setup_get_conn_str(env:str='dev_local', config_file:str='config/config.yaml'
     conn_str = config_dict[env]['conn_str']
     return conn_str
 
-def setup_db_connect(env:str='dev_local', autocommit:bool=False):
+def setup_db_connect(env:str, autocommit:bool=False):
     conn_str = setup_get_conn_str(env)
     conn = psycopg2.connect(conn_str)
     cur = conn.cursor()
@@ -20,7 +20,7 @@ def setup_db_connect(env:str='dev_local', autocommit:bool=False):
 
 def create_blob_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS blob(
-        blob_id SERIAL PRIMARY KEY,
+        blob_id VARCHAR(64) PRIMARY KEY,
         bytes TEXT)""") 
 
 def create_youtube_table(cur):
@@ -29,7 +29,7 @@ def create_youtube_table(cur):
         photo_id VARCHAR,
         channel VARCHAR,
         Title VARCHAR, 
-        blob_id INTEGER,
+        blob_id VARCHAR(64),
         FOREIGN KEY (blob_id) REFERENCES blob(blob_id))""")
 
 def create_fruit_table(cur):
@@ -37,7 +37,7 @@ def create_fruit_table(cur):
         entry_id SERIAL PRIMARY KEY,
         fruit_name VARCHAR,
         fruit_color VARCHAR,
-        blob_id INTEGER,
+        blob_id VARCHAR(64),
         FOREIGN KEY (blob_id) REFERENCES blob(blob_id))""")
 
 def initialize(env):
