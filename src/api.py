@@ -1,11 +1,13 @@
-from flask import Flask, request
-from pydantic import ValidationError
-from src.api_fns import db_connect
-import src.api_fns as f
 import json 
 import os
-from src.classes import AllTables
 import pdb 
+
+from flask import Flask, request
+from pydantic import ValidationError
+
+from src.api_fns import db_connect
+import src.api_fns as f
+from src.classes import AllTables
 
 ENV = os.getenv('ENV')
 

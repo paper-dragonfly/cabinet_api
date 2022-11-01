@@ -1,8 +1,8 @@
-from sqlite3 import sqlite_version
-import psycopg2
-import yaml
 import os
 import pdb
+
+import psycopg2
+import yaml
 
 ENV = os.getenv('ENV')
 
