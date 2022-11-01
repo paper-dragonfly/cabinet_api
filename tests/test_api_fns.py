@@ -1,4 +1,5 @@
 import pdb
+import re
 
 import psycopg2
 
@@ -13,8 +14,8 @@ def test_get_conn_str():
     WHEN a development environment is passed to the fn
     THEN assert expected database connection string is returned
     """
-    assert f.get_conn_str('testing') == 'postgres://katcha@localhost:5432/cabinet_test' 
-    assert f.get_conn_str('dev_local') == 'postgres://katcha@localhost:5432/cabinet'
+    assert len(re.findall('cabinet_test$', f.get_conn_str('testing'))) == 1
+    assert len(re.findall('cabinet$', f.get_conn_str('dev_local'))) == 1
 
 def test_db_connect():
     """

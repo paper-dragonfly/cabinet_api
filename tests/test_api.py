@@ -70,4 +70,29 @@ def test_drawer_update(client):
         cur.close()
         conn.close() 
 
+class TestBlob:
+    clear_all_tables()
+
+    def test_post_blob(client):
+        """
+        GIVEN a flask app
+        WHEN a POST request with table, metadata and blob_bytes is submitted to /blob
+        THEN assert returns int(entry_id)
+        """
+        test_blob = 'a perfectly passionate poem about pineapples'
+        blob_bytes = test_blob.encode('utf-8') 
+        response=client.post("/blob",data=json.dumps({'table':'fruit', 'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_bytes':blob_bytes}),content_type='application/json')
+        # check API response is of expected type 
+        assert type(json.loads(response.data.decode("ASCII"))) == int 
+        #check entry is in db
+        try: 
+            conn, cur = db_connect('testing')
+            cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
+            r = cur.fetchall()
+            assert len(r) == 1
+            assert 'pineapple' in r[0]
+        finally:
+            cur.close()
+            conn.close() 
+
 

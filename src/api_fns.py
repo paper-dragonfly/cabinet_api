@@ -4,6 +4,8 @@ import pdb
 import psycopg2
 import yaml
 
+from src.classes import table_class
+
 ENV = os.getenv('ENV')
 
 
@@ -27,35 +29,33 @@ def get_env_host(env:str=ENV, config_file:str='config/config.yaml')->str:
     return env_host
 
 
-def add_blob(blob_bytes:str, env:str=ENV) -> int:
-    try:
-        conn, cur = db_connect(env)
-        cur.execute('INSERT INTO blob (bytes) VALUES (%s)', (f'{blob_bytes}',))
-        cur.execute('SELECT MAX(blob_id) FROM blob')
-        blob_id = cur.fetchone()[0]
-    finally:
-        cur.close()
-        conn.close()
-        return blob_id
+def add_blob(blob_bytes:str, cur) -> int:
+    # TODO: add shaw256 hash as blob_id
+    cur.execute('INSERT INTO blob (bytes) VALUES (%s)', (f'{blob_bytes}',))
+    cur.execute('SELECT MAX(blob_id) FROM blob')
+    blob_id = cur.fetchone()[0]
+    return blob_id
 
 
 def build_insert_query(table:str, metadata:dict) -> tuple:
-    # generate str of column names
+    # TODO: NICO I don't think this is vulnerable to an injection attack
+    # generate str of column names 
     columns:list = metadata.keys()
+    del columns['entry_id']
     col_str = ""
     for i in columns:
         col_str += i + ', '
     col_str = col_str[0:-2]
-    # generate str of entry metadata values
+    # generate tuple of entry metadata_values
     entry_vals = tuple(metadata.values())
     # generate %s str of correct length
     s = ("%s,"*len(entry_vals))[0:-1]
     # create query
-    sql = f'INSERT INTO {table}({col_str}) VALUES({s})'
-    return sql, entry_vals
+    query = f'INSERT INTO {table}({col_str}) VALUES({s})'
+    return query, entry_vals
 
 
-def add_entry(table:str, metadata:dict, cur, env:str=ENV)->int:
+def add_entry(table:str, metadata:dict, cur)->int:
     sql_query, entry_vals = build_insert_query(table, metadata)
     cur.execute(sql_query, entry_vals)
     cur.execute(f'SELECT MAX(entry_id) FROM {table}') 
@@ -63,10 +63,10 @@ def add_entry(table:str, metadata:dict, cur, env:str=ENV)->int:
     return entry_id
 
 
-def get_column_names(table:str, cur, env:str=ENV) -> list: 
-    cur.execute(f'SELECT * FROM {table}')
-    col_names = [desc[0] for desc in cur.description]
-    return col_names
+# def get_column_names(table:str, cur, env:str=ENV) -> list: 
+#     cur.execute(f'SELECT * FROM {table}')
+#     col_names = [desc[0] for desc in cur.description]
+#     return col_names
     
 
 def get_current_metadata(table:str, entry_id:int, cur, env:str=ENV)-> dict:
