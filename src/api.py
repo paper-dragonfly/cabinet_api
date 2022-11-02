@@ -41,7 +41,8 @@ def create_app(env):
         try:
             conn, cur = db_connect(env=env)
             if request.method == 'GET':
-                user_search = request.args
+                user_search = request.args.to_dict()
+                # TODO: what if no args given? 
                 blob_type = user_search.pop('blob_type')    
                 valid_fields = f.validate_search_fields(blob_type,user_search)
                 if not valid_fields:

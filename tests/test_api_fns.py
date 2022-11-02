@@ -93,6 +93,7 @@ class TestInsert:
             conn.close()
 
 class TestSearch():
+    clear_all_tables()
     blob_types = {'fruit':Fruit}
     valid1 = {'fruit_name':'banana'}
     invalidkey = {'fruit_age':'two'}
@@ -110,6 +111,19 @@ class TestSearch():
     def test_build_results_dict(self):
         matches = [('1','plum','red','phash'),('2','plum','green','phash')]
         assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_id':['phash','phash']}
+
+    def test_search_metadata(self):
+        try:
+            conn, cur = db_connect('testing')
+            cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2')")
+            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s),(%s,%s,%s,%s)",('1','banana','yellow','hash1','2','mango','yellow','hash2'))
+            assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_id':['hash1']}
+            assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_id':['hash1','hash2']}
+            assert f.search_metadata('fruit',{'fruit_name':'pear'},cur) == None 
+        finally: 
+            cur.close()
+            conn.close()
+            
 
 
 

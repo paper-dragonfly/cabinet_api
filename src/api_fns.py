@@ -90,7 +90,6 @@ def build_results_dict(blob_type, matches:List[tuple]) -> dict:
     """
     create dict with blob_type metadata column names as keys and list of values from matching entries as values
     """
-    # pdb.set_trace()
     results = defaultdict(list)
     columns:list = list(blob_types[blob_type].__fields__.keys()) 
     for m in matches:
@@ -102,6 +101,8 @@ def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
     query, search_vals = build_search_query(blob_type, user_search)
     cur.execute(query, search_vals)
     matches = cur.fetchall() 
+    if not matches:
+        return None
     results_dict = build_results_dict(blob_type, matches)
     return results_dict 
 

@@ -102,15 +102,15 @@ class TestBlob:
             cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2'),('hash3')")
             cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('1','banana','yellow','hash1','2','apple','red','hash2', '3','strawberry','red','hash3','4','banana','green','hash1'))
             # submit GET request
-            response1 = client.get("/blob?entry_id=2")
-            response2 = client.get('/blob?fruit_color=red')
-            response3 = client.get("/blob?fruit_name=banana&blob_id=hash1")
-            response4 = client.get("/blob?fruit_name=banana&fruit_color=red")
+            response1 = client.get("/blob?blob_type=fruit&entry_id=2")
+            response2 = client.get('/blob?blob_type=fruit&fruit_color=red')
+            response3 = client.get("/blob?blob_type=fruit&fruit_name=banana&blob_id=hash1")
+            response4 = client.get("/blob?blob_type=fruit&fruit_name=banana&fruit_color=red")
             # check resp is as expected
-            assert response1 == {'entry_id':['2'], 'fruit_name':['apple'], 'fruit_color':['red'], 'blob_id':['hash2']}
-            assert response2 == {'entry_id':['2','3'], 'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
-            assert response3 == {'entry_id':['1','4'], 'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}
-            assert response4 == {'entry_id':[], 'fruit_name':[], 'fruit_color':[], 'blob_id':[]}
+            assert json.loads(response1.data.decode("ASCII"))['body'] == {'entry_id':[2], 'fruit_name':['apple'], 'fruit_color':['red'], 'blob_id':['hash2']}
+            assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
+            assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}
+            assert  json.loads(response4.data.decode("ASCII"))['body'] == None
         finally:
             cur.close()
             conn.close()
