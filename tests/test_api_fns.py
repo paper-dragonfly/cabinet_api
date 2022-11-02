@@ -7,6 +7,7 @@ import psycopg2
 from src.api_fns import db_connect
 import src.api_fns as f
 from conftest import clear_tables, clear_all_tables
+from src.classes import Fruit 
 
 class TestConnections:
     # db connection fns
@@ -37,9 +38,9 @@ class TestConnections:
 class TestInsert:
     def test_add_blob(self):
         """
-        GIVEN a postgres db, the add_blob fn and a blob encoded in bytes
-        WHEN blob-bytes are passed to add_blob fn
-        THEN assert an integer is returned 
+        GIVEN a postgres db, the add_blob fn and a blob encoded as a base_64_bytes_str
+        WHEN blob is passed to add_blob fn
+        THEN assert an integer of length 64 is returned (sha256 Hash)
         """
         #create test blob
         s = 'Hello World'
@@ -66,30 +67,49 @@ class TestInsert:
         """
         metadata = {'entry_id':None, 'a': 'apple', 'b': 'bar'}
         returned = f.build_insert_query("alphabet", metadata)
-        expected = (f'INSERT INTO alphabet(a, b) VALUES(%s,%s)',('apple', 'bar'))
+        expected = (f'INSERT INTO alphabet(a, b) VALUES(%s,%s) RETURNING entry_id',('apple', 'bar'))
         assert returned == expected 
 
 
     def test_add_entry(self):
         """
         GIVEN a postgres db and metadata dict (for a stored blob?)
-        WHEN dict is passed to add_entry along with the metadata type (table_name)
+        WHEN dict is passed to add_entry along with the metadata type (blob_type)
         THEN assert an int is returned - this should be the entry_id
         """
         try:
             #open connection and populate blob table
-            conn, cur = f.db_connect('testing')
-            cur.execute('INSERT INTO blob(blob_id) VALUES(1212) ON CONFLICT DO NOTHING')
+            conn, cur = f.db_connect('testing') 
+            cur.execute("INSERT INTO blob(blob_id) VALUES('test_blob_hash') ON CONFLICT DO NOTHING")
             #pass metadata to fn 
-            metadata = {'entry_id':None,'photo_id': 'p12', 'title': 'addEntryTest', 'blob_id':'1212'}
-            returned_entry_id = f.add_entry('youtube', metadata, cur) 
+            metadata = {'entry_id':None,'fruit_name': 'strawberry', 'fruit_color': 'red', 'blob_id':'test_blob_hash'}
+            returned_entry_id = f.add_entry('fruit', metadata, cur) 
             assert type(returned_entry_id) == int
         finally:
             # clear table, close connections
-            cur.execute("DELETE FROM youtube")
+            cur.execute("DELETE FROM fruit")
             cur.execute("DELETE FROM blob")
             cur.close()
             conn.close()
+
+class TestSearch():
+    blob_types = {'fruit':Fruit}
+    valid1 = {'fruit_name':'banana'}
+    invalidkey = {'fruit_age':'two'}
+
+    def test_validate_search_fields(self):
+        assert f.validate_search_fields('fruit',self.valid1,self.blob_types) == True
+        assert f.validate_search_fields('house',self.valid1,self.blob_types)==False
+        assert f.validate_search_fields('fruit',self.invalidkey,self.blob_types) == False
+
+    
+    def test_build_search_query(self):
+        assert f.build_search_query('fruit',self.valid1) == ("SELECT * FROM fruit WHERE fruit_name= %s",('banana',))
+
+
+    def test_build_results_dict(self):
+        matches = [('1','plum','red','phash'),('2','plum','green','phash')]
+        assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_id':['phash','phash']}
 
 
 

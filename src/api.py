@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobInfo, metadata_classes
+from src.classes import Fruit, BlobInfo, blob_types
 
 ENV = os.getenv('ENV')
 
@@ -41,33 +41,42 @@ def create_app(env):
         try:
             conn, cur = db_connect(env=env)
             if request.method == 'GET':
-                raise NotImplementedError
+                user_search = request.args
+                blob_type = user_search.pop('blob_type')    
+                valid_fields = f.validate_search_fields(blob_type,user_search)
+                if not valid_fields:
+                    status_code = 400
+                    payload = 'Invalid blob_type or search field'
+                else:
+                    matches:dict = f.search_metadata(blob_type,user_search,cur)
+                    payload = matches
             elif request.method == 'POST':
                 #extract info from POST
                 new_blob_info:BlobInfo = BlobInfo.parse_obj(request.get_json()) 
-                table_name = new_blob_info.table_name
-                if not table_name in metadata_classes.keys():
-                    return json.dumps({'status_code':400, 'body':f'{table_name} table does not exist'})
+                blob_type = new_blob_info.blob_type
+                if not blob_type in blob_types.keys():
+                    return json.dumps({'status_code':400, 'body':f'{blob_type} table does not exist'})
                 blob_b64s = new_blob_info.blob_b64s
                 # turn metadata into instance of specified metadata_class to enforce type hints
-                metadata_inst = metadata_classes[f'{table_name}'].parse_obj(new_blob_info.metadata)
+                metadata_inst = blob_types[blob_type].parse_obj(new_blob_info.metadata)
                 # add blob to db 
                 blob_id = f.add_blob(blob_b64s, cur)
                 # create dict with new_entry metadata including blob_id
                 metadata_inst.blob_id = blob_id 
                 metadata_dict = metadata_inst.dict()
                 # add metadata entry to db
-                entry_id = f.add_entry(table_name, metadata_dict, cur)
+                entry_id = f.add_entry(blob_type, metadata_dict, cur)
+                payload = {'entry_id':entry_id}
         finally:
             cur.close()
             conn.close()
-            return json.dumps({'status_code':200, 'body':{'entry_id':entry_id}})
+            return json.dumps({'status_code':200, 'body':payload})
 
     @app.route('/testtable', methods=['GET','POST'])
     def test_table():
         try:
             conn, cur = db_connect(env=env)
-            table_name = 'fruit'
+            blob_type = 'fruit'
             # feilds = ['entry_id','photo_id','channel','title', 'blob_id']
             feilds = ['entry_id','fruit_name','color','blob_id']
             if request.method == 'GET':
@@ -77,13 +86,13 @@ def create_app(env):
                 new:bool = post_data.new_blob
                 metadata:dict = post_data.metadata
                 if new:
-                    entry_id = f.add_entry(table_name, metadata, cur, env)
+                    entry_id = f.add_entry(blob_type, metadata, cur, env)
                     return json.dumps({'status_code':200, 'entry_id':entry_id})
                 else: #update
                     old_entry_id = post_data.old_entry_id
-                    current_metadata:dict = f.get_current_metadata(table_name, old_entry_id)
+                    current_metadata:dict = f.get_current_metadata(blob_type, old_entry_id)
                     updated_metadata: dict = f.make_full_update_dict(metadata, current_metadata)
-                    entry_id = f.add_entry(table_name, updated_metadata, cur, env)
+                    entry_id = f.add_entry(blob_type, updated_metadata, cur, env)
                     return json.dumps({'status_code':200, 'entry_id': entry_id})
         finally:
             cur.close()

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class BlobInfo(BaseModel):
-    table_name:str
+    blob_type:str
     metadata:dict
     blob_b64s:str
 
@@ -17,4 +17,4 @@ class Fruit(BaseModel):
     blob_id:str = None
 
 
-metadata_classes = {'fruit':Fruit}
+blob_types = {'fruit':Fruit}

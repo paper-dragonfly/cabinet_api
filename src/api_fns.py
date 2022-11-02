@@ -1,9 +1,14 @@
+from collections import UserString
 import os
 import pdb
 from hashlib import sha256
+from typing import List
+from collections import defaultdict
 
 import psycopg2
 import yaml
+
+from src.classes import blob_types
 
 
 ENV = os.getenv('ENV')
@@ -39,37 +44,71 @@ def add_blob(blob_b64s:str, cur) -> str:
 
 
 def build_insert_query(table:str, metadata:dict) -> tuple:
-    # TODO: NICO I don't think this is vulnerable to an injection attack
     # generate str of column names 
     del metadata['entry_id']
-    columns:list = metadata.keys()
-    col_str = ""
-    for i in columns:
-        col_str += i + ', '
-    col_str = col_str[0:-2]
+    col_str = ", ".join(metadata.keys())
     # generate tuple of entry metadata_values
     entry_vals = tuple(metadata.values())
     # generate %s str of correct length
     s = ("%s,"*len(entry_vals))[0:-1]
     # create query
-    query = f'INSERT INTO {table}({col_str}) VALUES({s})'
+    query = f'INSERT INTO {table}({col_str}) VALUES({s}) RETURNING entry_id'
     return query, entry_vals
 
 
 def add_entry(table:str, metadata:dict, cur)->int:
     sql_query, entry_vals = build_insert_query(table, metadata)
     cur.execute(sql_query, entry_vals)
-    cur.execute(f'SELECT MAX(entry_id) FROM {table}') 
     entry_id = cur.fetchone()[0] 
     return entry_id
+#__________________
 
-
-# def get_column_names(table:str, cur, env:str=ENV) -> list: 
-#     cur.execute(f'SELECT * FROM {table}')
-#     col_names = [desc[0] for desc in cur.description]
-#     return col_names
+def validate_search_fields(blob_type: str, user_search: dict, blob_types: dict=blob_types)-> bool:
+    #Q: have blob_types as fn arg?
+    """
+    Confirm blob_type is valid and that all search parameters are attributes of specified blob_type
+    """
+    if not blob_type in blob_types.keys():
+        return False 
+    blob_type_fields = blob_types[blob_type].__fields__.keys() 
+    for key in user_search.keys():
+        if not key in blob_type_fields:
+            return False 
+    return True   
     
 
+def build_search_query(blob_type: str, user_search: dict) -> tuple:
+    search_conditions = ""
+    search_vals = tuple(user_search.values())
+    for key in user_search:
+        search_conditions += f"{key}= %s AND "
+    search_conditions = search_conditions[0:-5]
+    query = f"SELECT * FROM {blob_type} WHERE {search_conditions}"
+    return query, search_vals 
+
+def build_results_dict(blob_type, matches:List[tuple]) -> dict:
+    """
+    create dict with blob_type metadata column names as keys and list of values from matching entries as values
+    """
+    # pdb.set_trace()
+    results = defaultdict(list)
+    columns:list = list(blob_types[blob_type].__fields__.keys()) 
+    for m in matches:
+        for i in range(len(m)):
+            results[columns[i]].append(m[i])    
+    return results
+
+def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
+    query, search_vals = build_search_query(blob_type, user_search)
+    cur.execute(query, search_vals)
+    matches = cur.fetchall() 
+    results_dict = build_results_dict(blob_type, matches)
+    return results_dict 
+
+
+    
+
+# _______________ 
 def get_current_metadata(table:str, entry_id:int, cur, env:str=ENV)-> dict:
     s_sub = '%s'
     cur.execute(f"SELECT * FROM {table} WHERE entry_id = {s_sub}", (entry_id,))

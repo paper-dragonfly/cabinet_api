@@ -1,6 +1,7 @@
 import json
 import pdb
 import base64
+from urllib import response
 
 import pytest
 
@@ -73,7 +74,7 @@ class TestBlob:
         blob_base64 = base64.b64encode(blob_bytes)
         blob_b64s = str(blob_base64)
         # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'table_name':'fruit', 'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_b64s':blob_b64s}),content_type='application/json')
+        response=client.post("/blob",data=json.dumps({'blob_type':'fruit', 'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_b64s':blob_b64s}),content_type='application/json')
         # check API response is of expected type 
         assert type(json.loads(response.data.decode("ASCII"))) == int 
         #check entry is in db
@@ -88,4 +89,28 @@ class TestBlob:
             cur.close()
             conn.close() 
 
-
+    def test_get_blob(self,client):
+        """
+        GIVEN a flask app 
+        WHEN a GET request is sent to /blob containing search parameters as url query args
+        THEN assert returns all entries matching search parameters 
+        """
+        clear_all_tables()
+        try: 
+            # populate_db 
+            conn, cur = db_connect('testing')
+            cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2'),('hash3')")
+            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('1','banana','yellow','hash1','2','apple','red','hash2', '3','strawberry','red','hash3','4','banana','green','hash1'))
+            # submit GET request
+            response1 = client.get("/blob?entry_id=2")
+            response2 = client.get('/blob?fruit_color=red')
+            response3 = client.get("/blob?fruit_name=banana&blob_id=hash1")
+            response4 = client.get("/blob?fruit_name=banana&fruit_color=red")
+            # check resp is as expected
+            assert response1 == {'entry_id':['2'], 'fruit_name':['apple'], 'fruit_color':['red'], 'blob_id':['hash2']}
+            assert response2 == {'entry_id':['2','3'], 'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
+            assert response3 == {'entry_id':['1','4'], 'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}
+            assert response4 == {'entry_id':[], 'fruit_name':[], 'fruit_color':[], 'blob_id':[]}
+        finally:
+            cur.close()
+            conn.close()
