@@ -62,7 +62,7 @@ def test_store_blob(client):
 class TestBlob:
     clear_all_tables()
 
-    def test_post_blob(self, client):
+    def test_blob_post(self, client):
         """
         GIVEN a flask app
         WHEN a POST request with table, metadata and blob_b64s (blob->str(base64)) is submitted to /blob
@@ -89,7 +89,7 @@ class TestBlob:
             cur.close()
             conn.close() 
 
-    def test_get_blob(self,client):
+    def test_blob_get(self,client):
         """
         GIVEN a flask app 
         WHEN a GET request is sent to /blob containing search parameters as url query args
@@ -108,7 +108,7 @@ class TestBlob:
             r_no_search = client.get("/blob?blob_type=fruit")
             response1 = client.get("/blob?blob_type=fruit&entry_id=2")
             response2 = client.get('/blob?blob_type=fruit&fruit_color=red')
-            response3 = client.get("/blob?blob_type=fruit&fruit_name=banana&blob_id=hash1")
+            response3 = client.get("/blob?blob_id=hash1&blob_type=fruit&fruit_name=banana")
             response4 = client.get("/blob?blob_type=fruit&fruit_name=banana&fruit_color=red")
 
             # check resp is as expected
@@ -119,6 +119,28 @@ class TestBlob:
             assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
             assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}
             assert  json.loads(response4.data.decode("ASCII"))['body'] == None
+        finally:
+            cur.close()
+            conn.close()
+
+class TestUpdate:
+    clear_all_tables()
+
+    def test_update(self, client):
+        try:
+            # populate db with entries to update
+            conn, cur = db_connect('testing')
+            cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2'),('hash3')")
+            cur.execute("INSERT INTO fruit(fruit_name, fruit_color, blob_id) VALUES(%s,%s,%s),(%s,%s,%s),(%s,%s,%s),(%s,%s,%s)", ('banana','yellow','hash1','apple','red','hash2','strawberry','red','hash3','banana','green','hash1'))
+            cur.execute("SELECT entry_id FROM fruit WHERE fruit_name = 'apple'")
+            id = cur.fetchone()[0]
+            # submit POST request with update
+            r_valid1 = client.post('/update', data=json.dumps({'blob_type':'fruit','current_entry_id':id,'update_data':{'fruit_color':'silver'}}),content_type='application/json') 
+            # invalid or abscent:  blob_type,  entry_id, feild_change for given blob_type
+            # assert returns expected 
+            decode_valid1 = json.loads(r_valid1.data.decode("ASCII"))
+            assert type(decode_valid1['body']['entry_id']) == int
+            # TODO: use select to make sure new entry is there  
         finally:
             cur.close()
             conn.close()

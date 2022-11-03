@@ -125,40 +125,39 @@ class TestSearch():
             cur.close()
             conn.close()
             
+class TestFnsUpdate:
+    clear_all_tables()
 
-
-
-def test_get_current_metadata():
-    """
-    GIVEN a postgres db, get_current_metadata fn and an entry_id
-    WHEN entry id is passed fn
-    THEN assert returns dict of metadata associated with that id
-    """
-    try:
-        conn, cur = db_connect('testing')
-        #populate db with old entry
-        cur.execute("DELETE FROM blob")
-        cur.execute("INSERT INTO blob(blob_id) VALUES('5')")
-        cur.execute("INSERT INTO fruit VALUES('55','banana','green','5')")
-        # test fn
-        current_metadata = f.get_current_metadata('fruit','55',cur, env='testing')
-        assert current_metadata == {'blob_id': 5, 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
-    finally: 
-        cur.execute('DELETE FROM fruit')
-        cur.execute('DELETE FROM blob')
-        cur.close()
-        conn.close()
+    def test_get_current_metadata(self):
+        """
+        GIVEN a postgres db, get_current_metadata fn and an entry_id
+        WHEN entry id is passed fn
+        THEN assert returns dict of metadata associated with that id
+        """
+        try:
+            conn, cur = db_connect('testing')
+            #populate db with old entry
+            cur.execute("INSERT INTO blob(blob_id) VALUES('hash5')")
+            cur.execute("INSERT INTO fruit VALUES('55','banana','green','hash5')")
+            # test fn
+            current_metadata = f.get_current_metadata('fruit','55',cur)
+            assert current_metadata == {'blob_id': 'hash5', 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
+        finally: 
+            cur.execute('DELETE FROM fruit')
+            cur.execute('DELETE FROM blob')
+            cur.close()
+            conn.close()
         
 
-def test_make_full_update_dict():
-    """
-    GIVEN two dictionaries 
-    WHEN dicts are passed to make_full_update_dict fn 
-    THEN assert returns expected combo dict
-    """
-    update_dict = {'fruit_color':'yellow'} 
-    old_metadata = {'blob_id': 5, 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
-    assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_id': 5, 'fruit_color': 'yellow', 'fruit_name': 'banana'}
+    def test_make_full_update_dict(self):
+        """
+        GIVEN two dictionaries 
+        WHEN dicts are passed to make_full_update_dict fn 
+        THEN assert returns expected combo dict
+        """
+        update_dict = {'fruit_color':'yellow'} 
+        old_metadata = {'blob_id': 'hash5', 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
+        assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_id': 'hash5', 'fruit_color': 'yellow', 'fruit_name': 'banana'}
 
 
 

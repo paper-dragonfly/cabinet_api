@@ -5,10 +5,17 @@ from pydantic import BaseModel
 # 1. blob_id default to 0 to allow for initial type-hint enforcement before blob added to db
 
 
-class BlobInfo(BaseModel):
+class BlobPostData(BaseModel):
     blob_type:str
     metadata:dict
     blob_b64s:str
+
+class UpdatePostData(BaseModel):
+    blob_type: str
+    current_entry_id:int 
+    update_data: dict 
+
+# Blob Types 
 
 class Fruit(BaseModel):
     entry_id:Optional[int]

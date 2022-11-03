@@ -43,16 +43,17 @@ def add_blob(blob_b64s:str, cur) -> str:
     return blob_id
 
 
-def build_insert_query(table:str, metadata:dict) -> tuple:
+def build_insert_query(blob_type:str, metadata:dict) -> tuple:
     # generate str of column names 
-    del metadata['entry_id']
+    if 'entry_id' in metadata.keys():
+        del metadata['entry_id']
     col_str = ", ".join(metadata.keys())
     # generate tuple of entry metadata_values
     entry_vals = tuple(metadata.values())
     # generate %s str of correct length
     s = ("%s,"*len(entry_vals))[0:-1]
     # create query
-    query = f'INSERT INTO {table}({col_str}) VALUES({s}) RETURNING entry_id'
+    query = f'INSERT INTO {blob_type}({col_str}) VALUES({s}) RETURNING entry_id'
     return query, entry_vals
 
 
@@ -88,6 +89,7 @@ def validate_search_fields(blob_type: str, user_search: dict, blob_types: dict=b
 
 def build_search_query(blob_type: str, user_search: dict) -> tuple:
     search_conditions = ""
+    #Q. this is relying on dict being ordered so search_vals line up with user_search keys...does that matter? solution, turn dict key:vals into tuples (key,val) then make seperate search_vals tuple and loop through k:v_tuple rather than dict keys
     search_vals = tuple(user_search.values())
     for key in user_search:
         search_conditions += f"{key}= %s AND "
@@ -119,21 +121,23 @@ def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
     
 
 # _______________ 
-def get_current_metadata(table:str, entry_id:int, cur, env:str=ENV)-> dict:
+def get_current_metadata(blob_type:str, entry_id:int, cur)-> dict:
     s_sub = '%s'
-    cur.execute(f"SELECT * FROM {table} WHERE entry_id = {s_sub}", (entry_id,))
-    old_metadata_vals: list= list(cur.fetchone())
-    col_names:list = get_column_names(table, cur)
-    old_metadata = {}
+    cur.execute(f"SELECT * FROM {blob_type} WHERE entry_id = {s_sub}", (entry_id,))
+    current_metadata_vals = cur.fetchone()
+    col_names:list = list(blob_types[blob_type].__fields__.keys())
+    current_metadata = {}
     for i in range(len(col_names)):
-        old_metadata[f'{col_names[i]}'] = old_metadata_vals[i]
-    return old_metadata
+        current_metadata[col_names[i]] = current_metadata_vals[i]
+    return current_metadata
 
 
-def make_full_update_dict(updates:dict, old_metadata:dict):
-    full_update = updates 
-    newdict = {**old, **new}
-    full_update.pop('entry_id', 'No entry_id key') #or use del ?
+def make_full_update_dict(updates:dict, current_metadata:dict):
+    """
+    Overwrite current_metadata with updates, remove entry_id key and return in new dict
+    """
+    full_update = {**current_metadata, **updates}
+    del full_update['entry_id']
     return full_update
 
  

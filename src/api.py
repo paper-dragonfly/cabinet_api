@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobInfo, blob_types
+from src.classes import Fruit, BlobPostData, UpdatePostData, blob_types
 
 ENV = os.getenv('ENV')
 
@@ -59,9 +59,10 @@ def create_app(env):
                     matches:dict = f.search_metadata(blob_type,user_search,cur)
                     status_code = 200
                     payload = matches
+
             elif request.method == 'POST':
                 #extract info from POST
-                new_blob_info:BlobInfo = BlobInfo.parse_obj(request.get_json()) 
+                new_blob_info:BlobPostData = BlobPostData.parse_obj(request.get_json()) 
                 blob_type = new_blob_info.blob_type
                 if not blob_type in blob_types.keys():
                     status_code = 400 
@@ -83,6 +84,22 @@ def create_app(env):
             conn.close()
             return json.dumps({'status_code':status_code, 'body':payload})
 
+    
+    @app.route('/update', methods=['POST'])
+    def update():
+        try:
+            conn, cur = db_connect(env)
+            post_data = UpdatePostData.parse_obj(request.get_json())
+            current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,cur)
+            full_update_dict = f.make_full_update_dict(post_data.update_data, current_metadata)
+            updated_entry_id = f.add_entry(post_data.blob_type, full_update_dict, cur)
+            status_code = 200
+            payload = {'entry_id': updated_entry_id} 
+        finally:
+            cur.close()
+            conn.close()
+            return json.dumps({'status_code':status_code, 'body':payload})
+
     @app.route('/testtable', methods=['GET','POST'])
     def test_table():
         try:
@@ -99,6 +116,7 @@ def create_app(env):
                 if new:
                     entry_id = f.add_entry(blob_type, metadata, cur, env)
                     return json.dumps({'status_code':200, 'entry_id':entry_id})
+                
                 else: #update
                     old_entry_id = post_data.old_entry_id
                     current_metadata:dict = f.get_current_metadata(blob_type, old_entry_id)
