@@ -102,11 +102,19 @@ class TestBlob:
             cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2'),('hash3')")
             cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('1','banana','yellow','hash1','2','apple','red','hash2', '3','strawberry','red','hash3','4','banana','green','hash1'))
             # submit GET request
+            # TODO 
+            r_no_args = client.get("/blob")
+            r_no_type = client.get('/blob?fruit_name=banana')
+            r_no_search = client.get("/blob?blob_type=fruit")
             response1 = client.get("/blob?blob_type=fruit&entry_id=2")
             response2 = client.get('/blob?blob_type=fruit&fruit_color=red')
             response3 = client.get("/blob?blob_type=fruit&fruit_name=banana&blob_id=hash1")
             response4 = client.get("/blob?blob_type=fruit&fruit_name=banana&fruit_color=red")
+
             # check resp is as expected
+            assert json.loads(r_no_args.data.decode("ASCII"))["body"] == {'error_message':'must provide blob_type'}
+            assert json.loads(r_no_type.data.decode("ASCII"))['body'] == {'error_message':'must provide blob_type'}
+            assert json.loads(r_no_search.data.decode("ASCII"))['body'] == {'entry_id':[1,2,3,4], 'fruit_name':['banana','apple','strawberry','banana'], 'fruit_color':['yellow','red','red','green'], 'blob_id':['hash1','hash2','hash3','hash1']}
             assert json.loads(response1.data.decode("ASCII"))['body'] == {'entry_id':[2], 'fruit_name':['apple'], 'fruit_color':['red'], 'blob_id':['hash2']}
             assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
             assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}

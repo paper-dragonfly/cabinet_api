@@ -63,6 +63,12 @@ def add_entry(table:str, metadata:dict, cur)->int:
     return entry_id
 #__________________
 
+def all_entries(blob_type: str, cur):
+    cur.execute(f"SELECT * FROM {blob_type}")
+    matches = cur.fetchall() 
+    return build_results_dict(blob_type,matches) 
+    
+
 def validate_search_fields(blob_type: str, user_search: dict, blob_types: dict=blob_types)-> bool:
     #Q: have blob_types as fn arg?
     """
@@ -70,6 +76,9 @@ def validate_search_fields(blob_type: str, user_search: dict, blob_types: dict=b
     """
     if not blob_type in blob_types.keys():
         return False 
+    # valid blob_type but no search args 
+    if not user_search:
+        return True 
     blob_type_fields = blob_types[blob_type].__fields__.keys() 
     for key in user_search.keys():
         if not key in blob_type_fields:

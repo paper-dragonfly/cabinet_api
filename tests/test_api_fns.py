@@ -99,6 +99,7 @@ class TestSearch():
     invalidkey = {'fruit_age':'two'}
 
     def test_validate_search_fields(self):
+        assert f.validate_search_fields('fruit', {}, self.blob_types) == True
         assert f.validate_search_fields('fruit',self.valid1,self.blob_types) == True
         assert f.validate_search_fields('house',self.valid1,self.blob_types)==False
         assert f.validate_search_fields('fruit',self.invalidkey,self.blob_types) == False
