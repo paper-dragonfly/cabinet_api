@@ -15,6 +15,7 @@ class UpdatePostData(BaseModel):
     current_entry_id:int 
     update_data: dict 
 
+
 # Blob Types 
 
 class Fruit(BaseModel):

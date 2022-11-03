@@ -26,6 +26,7 @@ def create_blob_table(cur):
 def create_youtube_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS youtube(
         entry_id SERIAL PRIMARY KEY,
+        blob_type VARCHAR, 
         photo_id VARCHAR,
         channel VARCHAR,
         Title VARCHAR, 
@@ -35,6 +36,7 @@ def create_youtube_table(cur):
 def create_fruit_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS fruit(
         entry_id SERIAL PRIMARY KEY,
+        blob_type VARCHAR,
         fruit_name VARCHAR,
         fruit_color VARCHAR,
         blob_id VARCHAR(64),

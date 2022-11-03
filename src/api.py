@@ -23,19 +23,6 @@ def create_app(env):
         return 'WELCOME TO CABINET'
 
 
-    # @app.route('/blob', methods=['GET', 'POST'])
-    # #TODO: learn about bytea postgres type. 
-    # def store_blob():
-    #     if request.method == 'GET':
-    #         raise NotImplementedError
-    #     if request.method == 'POST':
-    #         blob_bytes = request.get_json()['blob_bytes']
-    #         blob_id = f.add_blob(blob_bytes) 
-    #         return json.dumps({'blob_id':blob_id})
-
-    # NOTE: each data type has its own end point with predefined columns
-    # any changes to the table must be done in source code, not by user
-
     @app.route('/blob', methods=['GET', 'POST'])
     def blob(): 
         try:
@@ -45,9 +32,8 @@ def create_app(env):
                 if not 'blob_type' in user_search.keys():
                     status_code = 400
                     payload = {'error_message':'must provide blob_type'}
-                blob_type = user_search.pop('blob_type') 
-                valid_fields = f.validate_search_fields(blob_type,user_search)
-                if not valid_fields:
+                blob_type = user_search.pop('blob_type')
+                if not f.validate_search_fields(blob_type,user_search):
                     status_code = 400
                     payload = {'error_message':'Invalid blob_type or search field'}
                 # no search args beyond blob_type - return all entries for blob_type
@@ -99,33 +85,6 @@ def create_app(env):
             cur.close()
             conn.close()
             return json.dumps({'status_code':status_code, 'body':payload})
-
-    @app.route('/testtable', methods=['GET','POST'])
-    def test_table():
-        try:
-            conn, cur = db_connect(env=env)
-            blob_type = 'fruit'
-            # feilds = ['entry_id','photo_id','channel','title', 'blob_id']
-            feilds = ['entry_id','fruit_name','color','blob_id']
-            if request.method == 'GET':
-                raise NotImplementedError
-            if request.method == 'POST': 
-                post_data:AllTables = AllTables.parse_obj(request.get_json()) 
-                new:bool = post_data.new_blob
-                metadata:dict = post_data.metadata
-                if new:
-                    entry_id = f.add_entry(blob_type, metadata, cur, env)
-                    return json.dumps({'status_code':200, 'entry_id':entry_id})
-                
-                else: #update
-                    old_entry_id = post_data.old_entry_id
-                    current_metadata:dict = f.get_current_metadata(blob_type, old_entry_id)
-                    updated_metadata: dict = f.make_full_update_dict(metadata, current_metadata)
-                    entry_id = f.add_entry(blob_type, updated_metadata, cur, env)
-                    return json.dumps({'status_code':200, 'entry_id': entry_id})
-        finally:
-            cur.close()
-            conn.close()
             
     return app 
 
