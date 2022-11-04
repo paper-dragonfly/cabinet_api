@@ -11,7 +11,7 @@ from src.classes import Fruit
 
 class TestConnections:
     # db connection fns
-    def test_get_conn_str():
+    def test_get_conn_str(self):
         """
         GIVEN the get_conn_str fn
         WHEN a development environment is passed to the fn
@@ -20,7 +20,7 @@ class TestConnections:
         assert len(re.findall('cabinet_test$', f.get_conn_str('testing'))) == 1
         assert len(re.findall('cabinet$', f.get_conn_str('dev_local'))) == 1
 
-    def test_db_connect():
+    def test_db_connect(self):
         """
         GIVEN the db_connect fn
         WHEN a dev env is passed to fn
@@ -37,6 +37,7 @@ class TestConnections:
 
 class TestInsert:
     def test_add_blob(self):
+        clear_all_tables()
         """
         GIVEN a postgres db, the add_blob fn and a blob encoded as a base_64_bytes_str
         WHEN blob is passed to add_blob fn
@@ -95,31 +96,32 @@ class TestInsert:
 class TestSearch():
     clear_all_tables()
     blob_types = {'fruit':Fruit}
-    valid1 = {'fruit_name':'banana'}
-    invalidkey = {'fruit_age':'two'}
+    valid1 = {'blob_type':'fruit','fruit_name':'banana'}
+    invalidtype = {'blob_type':'house','fruit_name':'banana'}
+    invalidkey = {'blob_type':'fruit','fruit_age':'two'}
 
     def test_validate_search_fields(self):
-        assert f.validate_search_fields('fruit', {}, self.blob_types) == True
-        assert f.validate_search_fields('fruit',self.valid1,self.blob_types) == True
-        assert f.validate_search_fields('house',self.valid1,self.blob_types)==False
-        assert f.validate_search_fields('fruit',self.invalidkey,self.blob_types) == False
+        assert f.validate_search_fields({'blob_type':'fruit'}, self.blob_types) == True
+        assert f.validate_search_fields(self.valid1,self.blob_types) == True
+        assert f.validate_search_fields(self.invalidtype,self.blob_types)==False
+        assert f.validate_search_fields(self.invalidkey,self.blob_types) == False
 
     
     def test_build_search_query(self):
-        assert f.build_search_query('fruit',self.valid1) == ("SELECT * FROM fruit WHERE fruit_name= %s",('banana',))
+        assert f.build_search_query('fruit',self.valid1) == ("SELECT * FROM fruit WHERE blob_type= %s AND fruit_name= %s",('fruit','banana'))
 
 
     def test_build_results_dict(self):
-        matches = [('1','plum','red','phash'),('2','plum','green','phash')]
-        assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_id':['phash','phash']}
+        matches = [('1','fruit','plum','red','phash'),('2','fruit','plum','green','phash')]
+        assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'blob_type':['fruit','fruit'],'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_id':['phash','phash']}
 
     def test_search_metadata(self):
         try:
             conn, cur = db_connect('testing')
             cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2')")
-            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s),(%s,%s,%s,%s)",('1','banana','yellow','hash1','2','mango','yellow','hash2'))
-            assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_id':['hash1']}
-            assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_id':['hash1','hash2']}
+            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s)",('1','fruit','banana','yellow','hash1','2','fruit','mango','yellow','hash2'))
+            assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'blob_type':['fruit'], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_id':['hash1']}
+            assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'blob_type':['fruit','fruit'],'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_id':['hash1','hash2']}
             assert f.search_metadata('fruit',{'fruit_name':'pear'},cur) == None 
         finally: 
             cur.close()
@@ -138,10 +140,10 @@ class TestFnsUpdate:
             conn, cur = db_connect('testing')
             #populate db with old entry
             cur.execute("INSERT INTO blob(blob_id) VALUES('hash5')")
-            cur.execute("INSERT INTO fruit VALUES('55','banana','green','hash5')")
+            cur.execute("INSERT INTO fruit VALUES('55','fruit','banana','green','hash5')")
             # test fn
             current_metadata = f.get_current_metadata('fruit','55',cur)
-            assert current_metadata == {'blob_id': 'hash5', 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
+            assert current_metadata == {'blob_id': 'hash5', 'entry_id': 55, 'blob_type':'fruit', 'fruit_color': 'green', 'fruit_name': 'banana'}
         finally: 
             cur.execute('DELETE FROM fruit')
             cur.execute('DELETE FROM blob')

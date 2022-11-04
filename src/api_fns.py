@@ -57,8 +57,8 @@ def build_insert_query(blob_type:str, metadata:dict) -> tuple:
     return query, entry_vals
 
 
-def add_entry(table:str, metadata:dict, cur)->int:
-    sql_query, entry_vals = build_insert_query(table, metadata)
+def add_entry(blob_type:str, metadata:dict, cur)->int:
+    sql_query, entry_vals = build_insert_query(blob_type, metadata)
     cur.execute(sql_query, entry_vals)
     entry_id = cur.fetchone()[0] 
     return entry_id
@@ -70,17 +70,15 @@ def all_entries(blob_type: str, cur):
     return build_results_dict(blob_type,matches) 
     
 
-def validate_search_fields(blob_type: str, user_search: dict, blob_types: dict=blob_types)-> bool:
+def validate_search_fields(user_search: dict, blob_types: dict=blob_types)-> bool:
     #Q: have blob_types as fn arg?
     """
     Confirm blob_type is valid and that all search parameters are attributes of specified blob_type
     """
-    if not blob_type in blob_types.keys():
+    # invalid blob_type?
+    if not user_search['blob_type'] in blob_types.keys():
         return False 
-    # valid blob_type but no search args 
-    if not user_search:
-        return True 
-    blob_type_fields = blob_types[blob_type].__fields__.keys() 
+    blob_type_fields = blob_types[user_search['blob_type']].__fields__.keys() 
     for key in user_search.keys():
         if not key in blob_type_fields:
             return False 

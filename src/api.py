@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobPostData, UpdatePostData, blob_types
+from src.classes import Fruit, BlobPostData, UpdatePostData, blob_types, Response
 
 ENV = os.getenv('ENV')
 
@@ -30,29 +30,24 @@ def create_app(env):
             if request.method == 'GET':
                 user_search = request.args.to_dict()
                 if not 'blob_type' in user_search.keys():
-                    status_code = 400
-                    payload = {'error_message':'must provide blob_type'}
-                blob_type = user_search.pop('blob_type')
-                if not f.validate_search_fields(blob_type,user_search):
-                    status_code = 400
-                    payload = {'error_message':'Invalid blob_type or search field'}
-                # no search args beyond blob_type - return all entries for blob_type
-                elif not user_search:
+                    api_resp = Response(status_code=200,error_message='Must provide blob_type',body=None)
+                blob_type = user_search['blob_type']
+                if not f.validate_search_fields(user_search):
+                    api_resp = Response(status_code= 400,error_message= 'KeyError: invalid blob_type or search field', body=None)
+                # blob_type only - return all entries for blob_type
+                elif len(user_search) == 1:
                     matches = f.all_entries(blob_type, cur)
-                    status_code = 200
-                    payload = matches 
+                    api_resp = Response(status_code= 200,error_message= None,body= matches)
                 else:
                     matches:dict = f.search_metadata(blob_type,user_search,cur)
-                    status_code = 200
-                    payload = matches
+                    api_resp = Response(status_code= 200,error_message= None,body= matches)
 
             elif request.method == 'POST':
                 #extract info from POST
                 new_blob_info:BlobPostData = BlobPostData.parse_obj(request.get_json()) 
-                blob_type = new_blob_info.blob_type
+                blob_type = new_blob_info.metadata['blob_type']
                 if not blob_type in blob_types.keys():
-                    status_code = 400 
-                    payload = f'{blob_type} table does not exist'
+                    api_resp = Response(400,f'{blob_type} blob_type does not exist',None)
                 blob_b64s = new_blob_info.blob_b64s
                 # turn metadata into instance of specified metadata_class to enforce type hints
                 metadata_inst = blob_types[blob_type].parse_obj(new_blob_info.metadata)
@@ -63,12 +58,11 @@ def create_app(env):
                 metadata_dict = metadata_inst.dict()
                 # add metadata entry to db
                 entry_id = f.add_entry(blob_type, metadata_dict, cur)
-                status_code = 200
-                payload = {'entry_id':entry_id}
+                api_resp = Response(status_code=200,error_message=None,body={'entry_id':entry_id})
         finally:
             cur.close()
             conn.close()
-            return json.dumps({'status_code':status_code, 'body':payload})
+            return json.dumps(api_resp.dict())
 
     
     @app.route('/update', methods=['POST'])
