@@ -108,7 +108,6 @@ class TestUpdate:
         try:
             # populate db with entries to update
             conn, cur = db_connect('testing')
-            pdb.set_trace()
             cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2'),('hash3')")
             cur.execute("INSERT INTO fruit(blob_type,fruit_name, fruit_color, blob_id) VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('fruit','banana','yellow','hash1','fruit','apple','red','hash2','fruit','strawberry','red','hash3','fruit','banana','green','hash1'))
             cur.execute("SELECT entry_id FROM fruit WHERE fruit_name = 'apple'")
@@ -123,3 +122,7 @@ class TestUpdate:
         finally:
             cur.close()
             conn.close()
+
+def test_clean():
+    clear_all_tables()
+    return True 

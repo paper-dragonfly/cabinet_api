@@ -65,6 +65,7 @@ def create_app(env):
             return json.dumps(api_resp.dict())
 
     
+    #TODO catch errors at /update how?
     @app.route('/update', methods=['POST'])
     def update():
         try:
@@ -73,18 +74,23 @@ def create_app(env):
             current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,cur)
             full_update_dict = f.make_full_update_dict(post_data.update_data, current_metadata)
             updated_entry_id = f.add_entry(post_data.blob_type, full_update_dict, cur)
-            status_code = 200
-            payload = {'entry_id': updated_entry_id} 
+            api_resp = Response(status_code=200, error_message=None, body={'entry_id': updated_entry_id})
         finally:
             cur.close()
             conn.close()
-            return json.dumps({'status_code':status_code, 'body':payload})
+            return json.dumps(api_resp)
+
+    @app.route('/fields',methods=['GET'])
+    def get_fields():
+        blob_type = request.args()['blob_type']
+        bkeys = blob_types[blob_type].__fields__.keys() 
+        return list(bkeys)
             
     return app 
 
 
-if ENV != 'testing':
-    app = create_app(ENV)
+# if ENV != 'testing':
+app = create_app(ENV)
 
 if __name__ == '__main__':
     host = f.get_env_host(ENV)

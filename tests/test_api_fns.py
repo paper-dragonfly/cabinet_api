@@ -162,7 +162,9 @@ class TestFnsUpdate:
         assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_id': 'hash5', 'fruit_color': 'yellow', 'fruit_name': 'banana'}
 
 
-
+def test_clean():
+    clear_all_tables()
+    return True 
 
 
 

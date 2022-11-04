@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 
 class BlobPostData(BaseModel):
-    # blob_type:str
     metadata:dict
     blob_b64s:str
 
