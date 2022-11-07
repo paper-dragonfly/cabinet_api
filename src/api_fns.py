@@ -34,12 +34,13 @@ def get_env_host(env:str=ENV, config_file:str='config/config.yaml')->str:
     return env_host
 
 
+
 def add_blob(blob_b64s:str, cur) -> str: 
-    # TODO: add shaw256 hash as blob_id
-    #convert blob_b64s -> blob_bytes
+    #convert blob_b64s -> blob_bytes?
+    # TODO: Q. Catch potential errors?
     blob_b64_bytes = blob_b64s.encode('ascii')
     blob_id = sha256(blob_b64_bytes).hexdigest()
-    cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,f'{blob_b64s}',))
+    cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,blob_b64s,))
     return blob_id
 
 
@@ -82,7 +83,8 @@ def validate_search_fields(user_search: dict, blob_types: dict=blob_types)-> boo
     for key in user_search.keys():
         if not key in blob_type_fields:
             return False 
-    return True   
+    return True  
+
     
 
 def build_search_query(blob_type: str, user_search: dict) -> tuple:
@@ -119,6 +121,21 @@ def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
     
 
 # _______________ 
+
+def validate_update_fields(blob_type:str, update_data: dict, blob_types: dict=blob_types)-> bool:
+    """
+    Confirm blob_type is valid and that all update parameters are attributes of specified blob_type
+    """
+    # invalid blob_type?
+    if not blob_type in blob_types.keys():
+        return False 
+    blob_type_fields = blob_types[blob_type].__fields__.keys() 
+    for key in update_data.keys():
+        if not key in blob_type_fields:
+            return False 
+    return True 
+
+
 def get_current_metadata(blob_type:str, entry_id:int, cur)-> dict:
     s_sub = '%s'
     cur.execute(f"SELECT * FROM {blob_type} WHERE entry_id = {s_sub}", (entry_id,))
