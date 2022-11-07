@@ -123,6 +123,31 @@ class TestUpdate:
             cur.close()
             conn.close()
 
+def test_get_fields(client):
+    valid_resp = client.get('/fields?blob_type=fruit')
+    invalid1_resp = client.get('/fields?blob=fruit')
+    invalid2_resp = client.get('/fields?blob_type=faketype')
+    assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
+    assert json.loads(invalid1_resp.data.decode("ASCII"))["error_message"] == 'Blob_TypeError: no blob_type given'
+    assert json.loads(invalid2_resp.data.decode("ASCII"))['status_code'] == 400
+
+
+def test_retrieve(client): #TODO Need to write supporting end point and library method
+    clear_all_tables()
+    try:
+        # populate db with blob and metadata
+        conn, cur = db_connect('testing')
+        cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','blob_b64s pineapple'))
+        cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_id) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
+        # send request, capture resp
+        valid_resp = client.get('/blob/retrieve?blob_type=fruit&entry_id=101')
+        assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
+        assert json.loads(valid_resp.data.decode("ascii"))['body'] == {'blob':'blob_b64s pineapple'}
+    finally:
+        cur.close()
+        conn.close()
+
+
 def test_clean():
     clear_all_tables()
     return True 

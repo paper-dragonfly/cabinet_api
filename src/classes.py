@@ -14,10 +14,15 @@ class UpdatePostData(BaseModel):
     current_entry_id:int 
     update_data: dict 
 
+class RetrieveBlob(BaseModel):
+    blob_type: str
+    entry_id: int 
+
 class Response(BaseModel):
     status_code:int 
     error_message:str = None
     body:dict = None 
+
 
 # Blob Types 
 

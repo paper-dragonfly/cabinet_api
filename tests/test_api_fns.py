@@ -130,6 +130,12 @@ class TestSearch():
 class TestFnsUpdate:
     clear_all_tables()
 
+    def test_update_fields(self):
+        assert f.validate_update_fields('fruit', {'fruit_name':'mango'}) == True
+        assert f.validate_update_fields('truck', {'fruit_name':'mango'}) == False
+        assert f.validate_update_fields('fruit', {'fruit_age':'mango'}) == False
+
+
     def test_get_current_metadata(self):
         """
         GIVEN a postgres db, get_current_metadata fn and an entry_id
@@ -160,6 +166,20 @@ class TestFnsUpdate:
         update_dict = {'fruit_color':'yellow'} 
         old_metadata = {'blob_id': 'hash5', 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
         assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_id': 'hash5', 'fruit_color': 'yellow', 'fruit_name': 'banana'}
+
+
+def test_retrieve_blob():
+    clear_all_tables()
+    try:
+        # populate db with blob and metadata
+        conn, cur = db_connect('testing')
+        cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','blob_b64s pineapple'))
+        cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_id) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
+        search_dict = {'blob_type':'fruit','entry_id':101}
+        assert f.retrieve_blob(search_dict, cur) == 'blob_b64s pineapple'
+    finally:
+        cur.close()
+        conn.close()
 
 
 def test_clean():

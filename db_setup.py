@@ -21,7 +21,7 @@ def setup_db_connect(env:str, autocommit:bool=False):
 def create_blob_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS blob(
         blob_id VARCHAR(64) PRIMARY KEY,
-        bytes TEXT)""") 
+        blob_b64s TEXT)""") 
 
 def create_youtube_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS youtube(

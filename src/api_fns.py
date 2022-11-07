@@ -120,7 +120,7 @@ def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
 
     
 
-# _______________ 
+# _______/update________ 
 
 def validate_update_fields(blob_type:str, update_data: dict, blob_types: dict=blob_types)-> bool:
     """
@@ -154,5 +154,14 @@ def make_full_update_dict(updates:dict, current_metadata:dict):
     full_update = {**current_metadata, **updates}
     del full_update['entry_id']
     return full_update
+
+# ________________
+
+def retrieve_blob(search_args: dict, cur) -> str:
+    cur.execute(f"SELECT blob_id FROM {search_args['blob_type']} WHERE entry_id = %s",(search_args['entry_id'],))
+    blob_id = cur.fetchone()[0] 
+    cur.execute('SELECT blob_b64s From blob WHERE blob_id=%s',(blob_id,)) 
+    blob_b64s = cur.fetchone()[0] 
+    return blob_b64s
 
  
