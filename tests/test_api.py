@@ -125,11 +125,13 @@ class TestUpdate:
 
 def test_get_fields(client):
     valid_resp = client.get('/fields?blob_type=fruit')
-    invalid1_resp = client.get('/fields?blob=fruit')
+    invalid1_resp = client.get('/fields?invalidarg=fruit')
     invalid2_resp = client.get('/fields?blob_type=faketype')
+    valid2_resp = client.get('/fields?blob_type=return_all_blob_types')
     assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
     assert json.loads(invalid1_resp.data.decode("ASCII"))["status_code"] == 400
     assert json.loads(invalid2_resp.data.decode("ASCII"))['status_code'] == 400
+    assert json.loads(valid2_resp.data.decode('ascii'))['status_code'] == 200
 
 
 def test_retrieve(client): #TODO Need to write supporting end point and library method

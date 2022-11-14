@@ -21,6 +21,10 @@ def create_app(env):
         return 'WELCOME TO CABINET'
 
 
+    @app.route('/blob/types', methods=['GET'])
+    def list_blob_types():
+        return dict(keys=blob_types, value=list[fields])
+
     @app.route('/blob', methods=['GET', 'POST'])
     def blob(): 
         try:
@@ -108,12 +112,18 @@ def create_app(env):
             blob_type = Fields.parse_obj(request.args.to_dict()).blob_type
         except Exception as e: 
             api_resp = Response(status_code=400, error_message= e.json())
-            return api_resp.json()
-        if blob_type not in blob_types.keys():
+            return api_resp.json()            
+        if blob_type not in blob_types.keys() and blob_type != 'return_all_blob_types':
             api_resp = Response(status_code = 400, error_message = 'Blob_TypeError: invalid blob_type', body = request.args.to_dict())
         else:
-            bkeys = blob_types[blob_type].__fields__.keys() 
-            api_resp = Response(body= {'fields':list(bkeys)})
+            blob_types_list = [blob_type]
+            if blob_type == 'return_all_blob_types':
+                blob_types_list = blob_types.keys()
+            types_and_fields = {}
+            for t in blob_types_list:
+                bkeys = list(blob_types[t].__fields__.keys())
+                types_and_fields[t] = bkeys
+            api_resp = Response(body= types_and_fields)
         return api_resp.json()
 
     

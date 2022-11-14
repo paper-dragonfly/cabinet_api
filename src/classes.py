@@ -1,4 +1,5 @@
 from typing import Optional, Union
+
 from pydantic import BaseModel
 
 # NOTE
@@ -17,6 +18,7 @@ class Chess(BaseModel):
     entry_id: Optional[int]
     blob_type:str = 'chess'
 
+# Blob_type Reccord 
 blob_types = {'fruit':Fruit, 'chess':Chess}
 blob_classes = Union[Fruit, Chess]
 
@@ -36,7 +38,7 @@ class UpdatePostData(BaseModel):
     update_data: dict 
 
 class Fields(BaseModel):
-    blob_type: str
+    blob_type:str
 
 class RetrieveBlob(BaseModel):
     blob_type: str
