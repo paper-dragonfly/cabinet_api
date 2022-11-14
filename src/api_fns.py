@@ -8,19 +8,25 @@ from collections import defaultdict
 import psycopg2
 import yaml
 
-from src.classes import blob_types
+from src.classes import blob_types, blob_classes
 
 
 ENV = os.getenv('ENV')
 
 
 def get_conn_str(env: str=ENV, config_file: str='config/config.yaml') -> str:
+    """
+    Get string from config file to connect to postgreSQL database
+    """
     with open(f'{config_file}', 'r') as f:
         config_dict = yaml.safe_load(f)
     conn_str = config_dict[env]['conn_str']
     return conn_str
 
 def db_connect(env:str=ENV, autocommit:bool=True) ->tuple:
+    """
+    Connect to postgreSQL db, return a connection and cursor object
+    """
     conn_str = get_conn_str(env)
     conn = psycopg2.connect(conn_str)
     cur = conn.cursor()
@@ -36,6 +42,9 @@ def get_env_host(env:str=ENV, config_file:str='config/config.yaml')->str:
 
 
 def add_blob(blob_b64s:str, cur) -> str: 
+    """
+    Takes a base64 encoded string version of the blob and stores it in the blob table of the Cabinet database generating and returning a shaa256 hash id for the blob
+    """
     #convert blob_b64s -> blob_bytes?
     # TODO: Q. Catch potential errors?
     blob_b64_bytes = blob_b64s.encode('ascii')
@@ -44,22 +53,24 @@ def add_blob(blob_b64s:str, cur) -> str:
     return blob_id
 
 
-def build_insert_query(blob_type:str, metadata:dict) -> tuple:
+def build_insert_query(metadata:blob_classes) -> tuple:
+    metadata_dict = metadata.dict() 
     # generate str of column names 
-    if 'entry_id' in metadata.keys():
-        del metadata['entry_id']
-    col_str = ", ".join(metadata.keys())
+    if 'entry_id' in metadata_dict.keys():
+        del metadata_dict['entry_id']
+    # create string of column headings seperated by comma
+    col_str = ", ".join(metadata_dict.keys())
     # generate tuple of entry metadata_values
-    entry_vals = tuple(metadata.values())
+    entry_vals = tuple(metadata_dict.values())
     # generate %s str of correct length
     s = ("%s,"*len(entry_vals))[0:-1]
     # create query
-    query = f'INSERT INTO {blob_type}({col_str}) VALUES({s}) RETURNING entry_id'
+    query = f'INSERT INTO {metadata.blob_type}({col_str}) VALUES({s}) RETURNING entry_id'
     return query, entry_vals
 
 
-def add_entry(blob_type:str, metadata:dict, cur)->int:
-    sql_query, entry_vals = build_insert_query(blob_type, metadata)
+def add_entry(metadata:blob_classes, cur)->int:
+    sql_query, entry_vals = build_insert_query(metadata)
     cur.execute(sql_query, entry_vals)
     entry_id = cur.fetchone()[0] 
     return entry_id

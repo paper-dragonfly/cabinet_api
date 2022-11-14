@@ -128,7 +128,7 @@ def test_get_fields(client):
     invalid1_resp = client.get('/fields?blob=fruit')
     invalid2_resp = client.get('/fields?blob_type=faketype')
     assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
-    assert json.loads(invalid1_resp.data.decode("ASCII"))["error_message"] == 'Blob_TypeError: no blob_type given'
+    assert json.loads(invalid1_resp.data.decode("ASCII"))["status_code"] == 400
     assert json.loads(invalid2_resp.data.decode("ASCII"))['status_code'] == 400
 
 

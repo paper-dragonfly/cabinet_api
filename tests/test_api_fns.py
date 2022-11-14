@@ -66,9 +66,9 @@ class TestInsert:
         WHEN dict is passed to fn
         THEN assert expected tuple(sql_query:str, values:tuple) is returned
         """
-        metadata = {'entry_id':None, 'a': 'apple', 'b': 'bar'}
-        returned = f.build_insert_query("alphabet", metadata)
-        expected = (f'INSERT INTO alphabet(a, b) VALUES(%s,%s) RETURNING entry_id',('apple', 'bar'))
+        metadata = Fruit(entry_id=55, blob_type='fruit', fruit_name='apple', fruit_color='gold',blob_id='hash')
+        returned = f.build_insert_query(metadata)
+        expected = (f'INSERT INTO fruit(blob_type, fruit_name, fruit_color, blob_id) VALUES(%s,%s,%s,%s) RETURNING entry_id',('fruit', 'apple','gold','hash'))
         assert returned == expected 
 
 
@@ -84,7 +84,8 @@ class TestInsert:
             cur.execute("INSERT INTO blob(blob_id) VALUES('test_blob_hash') ON CONFLICT DO NOTHING")
             #pass metadata to fn 
             metadata = {'entry_id':None,'fruit_name': 'strawberry', 'fruit_color': 'red', 'blob_id':'test_blob_hash'}
-            returned_entry_id = f.add_entry('fruit', metadata, cur) 
+            metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_id='test_blob_hash')
+            returned_entry_id = f.add_entry(metadata, cur) 
             assert type(returned_entry_id) == int
         finally:
             # clear table, close connections
