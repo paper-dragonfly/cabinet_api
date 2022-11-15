@@ -1,7 +1,8 @@
-import psycopg2
 import os
 import yaml
 import pdb
+
+import psycopg2
 
 #NOTE: assumes cabinet and cabinet_test databases exist
 

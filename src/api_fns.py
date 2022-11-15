@@ -33,11 +33,12 @@ def db_connect(env:str=ENV, autocommit:bool=True) ->tuple:
     conn.autocommit = autocommit
     return conn, cur 
 
-def get_env_host(env:str=ENV, config_file:str='config/config.yaml')->str:
+def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
     with open(f'{config_file}', 'r') as f:
         config_dict = yaml.safe_load(f)
     env_host = config_dict[env]['host']
-    return env_host
+    env_port = config_dict[env]['API port']
+    return env_host, env_port
 
 
 

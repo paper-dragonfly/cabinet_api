@@ -13,6 +13,12 @@ Designed to be used in connujunction with the cabinet-sdk package which can be f
 
 Create an empty postgreSQL database called 'cabinet' and another called 'cabinet_test'. See Create Blob_types section below for instructions on populating these databases
 
+If you want to work in an environment other than dev_local, such as production, set the working environment from the command line: ```export ENV='<environment>'```. This is used if you have more than one cabinet database, such as a local one and a remote one. 
+Note: this ENV assignment will only last for the duration of your command line session. 
+Note2: Regardless of the value of ENV, pytest will run the api app in testing mode. No need to set ENV='testing' to run pytest. 
+
+Use the following CL command to run the API: ```python3 src/api.py```
+
 #### Configuration
 Create config.yaml file in the config folder which should be located in your root directory. This file will contain database connection strings and specify the host for each development environment. See config/config_template.yaml.
 

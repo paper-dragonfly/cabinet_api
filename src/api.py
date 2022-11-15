@@ -155,9 +155,11 @@ def create_app(env):
     return app
 
 
-# if ENV != 'testing':
-app = create_app(ENV)
-
 if __name__ == '__main__':
-    host = f.get_env_host(ENV)
-    app.run('localhost', 5050, debug=True)
+    if ENV:
+        app = create_app(ENV)
+        host, api_port = f.get_env_info(ENV)
+    else: #defualt
+        app = create_app('dev_local')
+        host, api_port = f.get_env_info('dev_local')
+    app.run(host, api_port, debug=True)
