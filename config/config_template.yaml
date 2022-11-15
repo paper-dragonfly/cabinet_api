@@ -1,0 +1,10 @@
+---
+dev_local: #local db, local app
+  conn_str: postgresql://user:password@host:port/cabinet
+  host: localhost
+
+testing: #local db, local app
+  conn_str: postgresql://user:password@host:port/cabinet_test
+  host: localhost
+
+  

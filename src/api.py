@@ -21,10 +21,6 @@ def create_app(env):
         return 'WELCOME TO CABINET'
 
 
-    @app.route('/blob/types', methods=['GET'])
-    def list_blob_types():
-        return dict(keys=blob_types, value=list[fields])
-
     @app.route('/blob', methods=['GET', 'POST'])
     def blob(): 
         try:
@@ -102,6 +98,7 @@ def create_app(env):
             cur.close()
             conn.close()
             return api_resp.json()
+
 
     @app.route('/fields',methods=['GET'])
     def get_fields():

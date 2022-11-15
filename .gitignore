@@ -1,6 +1,8 @@
 .venv_cabapi/*
 *.pyc
 __pycache__/*
-config/*
+config/config.yaml
 sandbox.py
 sandbox.ipynb
+dist/*
+*.egg-info
