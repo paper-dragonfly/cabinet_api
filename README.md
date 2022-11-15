@@ -1,4 +1,4 @@
-![Cabinet Blob Storage](rubix2.jpg)  
+![Cabinet Blob Storage](rubix2.jpeg)  
 
 # cabinet_api
 Flask API for Cabinet blob-storage platfrom 
