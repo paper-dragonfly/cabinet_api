@@ -1,4 +1,4 @@
-![Cabinet Logo](rubix2.jpeg =200x)
+![Cabinet Logo](rubix2.jpeg | width=100)
 
 # cabinet_api
 Flask API for Cabinet blob-storage platfrom 
