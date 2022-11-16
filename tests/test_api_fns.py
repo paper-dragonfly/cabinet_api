@@ -96,16 +96,16 @@ class TestInsert:
 
 class TestSearch():
     clear_all_tables()
-    blob_types = {'fruit':Fruit}
+    Blob_Type = {'fruit':Fruit}
     valid1 = {'blob_type':'fruit','fruit_name':'banana'}
     invalidtype = {'blob_type':'house','fruit_name':'banana'}
     invalidkey = {'blob_type':'fruit','fruit_age':'two'}
 
     def test_validate_search_fields(self):
-        assert f.validate_search_fields({'blob_type':'fruit'}, self.blob_types) == True
-        assert f.validate_search_fields(self.valid1,self.blob_types) == True
-        assert f.validate_search_fields(self.invalidtype,self.blob_types)==False
-        assert f.validate_search_fields(self.invalidkey,self.blob_types) == False
+        assert f.validate_search_fields({'blob_type':'fruit'}, self.Blob_Type) == True
+        assert f.validate_search_fields(self.valid1,self.Blob_Type) == True
+        assert f.validate_search_fields(self.invalidtype,self.Blob_Type)==False
+        assert f.validate_search_fields(self.invalidkey,self.Blob_Type) == False
 
     
     def test_build_search_query(self):

@@ -19,7 +19,7 @@ class Chess(BaseModel):
     blob_type:str = 'chess'
 
 # Blob_type Reccord 
-blob_types = {'fruit':Fruit, 'chess':Chess}
+Blob_Type = {'fruit':Fruit, 'chess':Chess}
 blob_classes = Union[Fruit, Chess]
 
 # endpoint inputs 

@@ -8,7 +8,7 @@ from collections import defaultdict
 import psycopg2
 import yaml
 
-from src.classes import blob_types, blob_classes
+from src.classes import Blob_Type, blob_classes
 
 
 ENV = os.getenv('ENV')
@@ -83,7 +83,7 @@ def all_entries(blob_type: str, cur):
     return build_results_dict(blob_type,matches) 
     
 
-def validate_search_fields(user_search: dict, blob_types: dict=blob_types)-> bool:
+def validate_search_fields(user_search: dict, blob_types: dict=Blob_Type)-> bool:
     #Q: have blob_types as fn arg?
     """
     Confirm blob_type is valid and that all search parameters are attributes of specified blob_type
@@ -114,7 +114,7 @@ def build_results_dict(blob_type, matches:List[tuple]) -> dict:
     create dict with blob_type metadata column names as keys and list of values from matching entries as values
     """
     results = defaultdict(list)
-    columns:list = list(blob_types[blob_type].__fields__.keys()) 
+    columns:list = list(Blob_Type[blob_type].__fields__.keys()) 
     for m in matches:
         for i in range(len(m)):
             results[columns[i]].append(m[i])    
@@ -134,25 +134,28 @@ def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
 
 # _______/update________ 
 
-def validate_update_fields(blob_type:str, update_data: dict, blob_types: dict=blob_types)-> bool:
+def validate_update_fields(blob_type:str, update_data: dict, blob_types: dict=Blob_Type)-> dict:
     """
     Confirm blob_type is valid and that all update parameters are attributes of specified blob_type
     """
     # invalid blob_type?
-    if not blob_type in blob_types.keys():
-        return False 
-    blob_type_fields = blob_types[blob_type].__fields__.keys() 
+    if not blob_type in Blob_Type.keys():
+        return {'valid': False, 'error':f'BlobTypeError: {blob_type} is not a valid blob type'} 
+    blob_type_fields = Blob_Type[blob_type].__fields__.keys() 
+    invalid_fields = []
     for key in update_data.keys():
         if not key in blob_type_fields:
-            return False 
-    return True 
+            invalid_fields.append(key)
+    if invalid_fields:
+        return ({'valid': False, 'error':f'FieldError: invalid fields for blob_type {blob_type} {invalid_fields}'}) 
+    return {'valid': True} 
 
 
 def get_current_metadata(blob_type:str, entry_id:int, cur)-> dict:
     s_sub = '%s'
     cur.execute(f"SELECT * FROM {blob_type} WHERE entry_id = {s_sub}", (entry_id,))
     current_metadata_vals = cur.fetchone()
-    col_names:list = list(blob_types[blob_type].__fields__.keys())
+    col_names:list = list(Blob_Type[blob_type].__fields__.keys())
     current_metadata = {}
     for i in range(len(col_names)):
         current_metadata[col_names[i]] = current_metadata_vals[i]
