@@ -50,7 +50,11 @@ def add_blob(blob_b64s:str, cur) -> str:
     # TODO: Q. Catch potential errors?
     blob_b64_bytes = blob_b64s.encode('ascii')
     blob_id = sha256(blob_b64_bytes).hexdigest()
-    cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,blob_b64s,))
+    pdb.set_trace()
+    try: 
+        cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,blob_b64s))
+    except Exception:
+        return False 
     return blob_id
 
 

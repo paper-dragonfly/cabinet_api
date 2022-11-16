@@ -8,7 +8,8 @@ import psycopg2
 
 #DEFINE BLOB_TYPES HERE
 custom_blob_types = {
-    'youtube':{'photo_id':'VARCHAR', 'channel':'VARCHAR', 'title':'VARCHAR'}
+    'youtube':{'photo_id':'VARCHAR', 'channel':'VARCHAR', 'title':'VARCHAR'},
+    'lichess': {'event':'VARCHAR', 'site':'VARCHAR', 'white':'VARCHAR', 'black':'VARCHAR', 'result':'VARCHAR', 'utcdate':'VARCHAR', 'utctime':'VARCHAR', 'whiteelo':'INT', 'blackelo':'INT', 'whiteratingdiff':'VARCHAR', 'blackratingdiff':'VARCHAR', 'eco':'VARCHAR', 'opening':'VARCHAR', 'timecontrol':'VARCHAR', 'termination':'VARCHAR', }
     }
 
 # Connection fns
@@ -49,10 +50,9 @@ def create_new_blob_type(blob_type:str, fields:dict, cur):
     cur.execute(f"""CREATE TABLE IF NOT EXISTS {blob_type}(
         entry_id SERIAL PRIMARY KEY,
         blob_type VARCHAR,
-        {fields_str}
         blob_id VARCHAR(64),
+        {fields_str}
         FOREIGN KEY (blob_id) REFERENCES blob(blob_id))""")
-
 
 
 # CREATE TABLES

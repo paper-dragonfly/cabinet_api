@@ -50,6 +50,8 @@ def create_app(env):
                     parsed_metadata = Blob_Type[blob_type].parse_obj(new_blob_info.metadata)
                     #add blob to db
                     blob_id = f.add_blob(new_blob_info.blob_b64s, cur)
+                    if not blob_id:
+                        return Response(status_code=400, e='BlobDuplication: blob already in cabinet')
                     # create dict with new_entry metadata including blob_id
                     # TODO: rewrite add_entry to accept parsed_metadata not dict
                     parsed_metadata.blob_id = blob_id 
