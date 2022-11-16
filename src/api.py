@@ -31,14 +31,14 @@ def create_app(env):
                     return Response(status_code=400,error_message='Must provide blob_type').json()
                 blob_type = user_search['blob_type']
                 if not f.validate_search_fields(user_search):
-                    return Response(status_code= 400,error_message= 'KeyError: invalid blob_type or search field').json
+                    return Response(status_code= 400,error_message= 'KeyError: invalid blob_type or search field').json()
                 # blob_type only - return all entries for blob_type
                 elif len(user_search) == 1:
                     matches = f.all_entries(blob_type, cur)
-                    return Response(body= matches).json
+                    return Response(body= matches).json()
                 else:
                     matches:dict = f.search_metadata(blob_type,user_search,cur)
-                    return Response(body= matches).json
+                    return Response(body= matches).json()
 
             elif request.method == 'POST':
                 try:
@@ -111,14 +111,14 @@ def create_app(env):
         return api_resp.json()
 
     
-    @app.route('/blob/retrieve', methods=['GET'])
-    def retrieve():
+    @app.route('/blob/<blob_type>/<id>', methods=['GET']) 
+    def retrieve(blob_type=None, id=None):
         """
         Retrun blob associate with submitted entry_id 
         """
         # confirm submitted args are valid
         try:
-            search_args =  RetrieveBlob.parse_obj(request.args.to_dict())
+            search_args =  RetrieveBlob(blob_type=blob_type, entry_id=id)
             search_dict = search_args.dict()
         except (TypeError, ValueError) as e: 
             return Response(status_code=400, error_message= e).json()

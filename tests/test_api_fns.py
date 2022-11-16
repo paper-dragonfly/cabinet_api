@@ -6,7 +6,7 @@ import psycopg2
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from conftest import clear_tables, clear_all_tables
+from tests.conftest import clear_tables, clear_all_tables
 from src.classes import Fruit 
 
 class TestConnections:
@@ -132,9 +132,9 @@ class TestFnsUpdate:
     clear_all_tables()
 
     def test_update_fields(self):
-        assert f.validate_update_fields('fruit', {'fruit_name':'mango'}) == True
-        assert f.validate_update_fields('truck', {'fruit_name':'mango'}) == False
-        assert f.validate_update_fields('fruit', {'fruit_age':'mango'}) == False
+        assert f.validate_update_fields('fruit', {'fruit_name':'mango'}) == {'valid':True}
+        assert f.validate_update_fields('truck', {'fruit_name':'mango'}) == {'valid':False, 'error':'BlobTypeError: truck is not a valid blob type'}
+        assert f.validate_update_fields('fruit', {'fruit_age':'mango'}) == {'valid':False, 'error':f"FieldError: invalid fields for blob_type fruit ['fruit_age']"}
 
 
     def test_get_current_metadata(self):

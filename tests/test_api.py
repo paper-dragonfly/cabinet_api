@@ -7,7 +7,7 @@ import pytest
 
 from src.api import db_connect
 import src.api as api
-from conftest import clear_all_tables
+from tests.conftest import clear_all_tables
 
 def _test_fn(client):
     # try connecting to db
@@ -84,7 +84,7 @@ class TestBlob:
             # TODO 
             r_no_args = client.get("/blob")
             r_no_type = client.get('/blob?fruit_name=banana')
-            r_no_search = client.get("/blob?blob_type=fruit")
+            r_return_all_entries_of_blobtype = client.get("/blob?blob_type=fruit")
             response1 = client.get("/blob?blob_type=fruit&entry_id=2")
             response2 = client.get('/blob?blob_type=fruit&fruit_color=red')
             response3 = client.get("/blob?blob_id=hash1&blob_type=fruit&fruit_name=banana")
@@ -92,7 +92,7 @@ class TestBlob:
             # check resp is as expected
             assert json.loads(r_no_args.data.decode("ASCII"))["error_message"] == 'Must provide blob_type'
             assert json.loads(r_no_type.data.decode("ASCII"))["error_message"] == 'Must provide blob_type'
-            assert json.loads(r_no_search.data.decode("ASCII"))['body'] == {'entry_id':[1,2,3,4], 'blob_type':['fruit','fruit','fruit','fruit'],'fruit_name':['banana','apple','strawberry','banana'], 'fruit_color':['yellow','red','red','green'], 'blob_id':['hash1','hash2','hash3','hash1']}
+            assert json.loads(r_return_all_entries_of_blobtype.data.decode("ASCII"))['body'] == {'entry_id':[1,2,3,4], 'blob_type':['fruit','fruit','fruit','fruit'],'fruit_name':['banana','apple','strawberry','banana'], 'fruit_color':['yellow','red','red','green'], 'blob_id':['hash1','hash2','hash3','hash1']}
             assert json.loads(response1.data.decode("ASCII"))['body'] == {'entry_id':[2], 'blob_type':['fruit'],'fruit_name':['apple'], 'fruit_color':['red'], 'blob_id':['hash2']}
             assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'blob_type':['fruit','fruit'],'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
             assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'blob_type':['fruit','fruit'],'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}
@@ -142,7 +142,7 @@ def test_retrieve(client): #TODO Need to write supporting end point and library 
         cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','blob_b64s pineapple'))
         cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_id) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
         # send request, capture resp
-        valid_resp = client.get('/blob/retrieve?blob_type=fruit&entry_id=101')
+        valid_resp = client.get('/blob/fruit/101')
         assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
         assert json.loads(valid_resp.data.decode("ascii"))['body'] == {'blob':'blob_b64s pineapple'}
     finally:
