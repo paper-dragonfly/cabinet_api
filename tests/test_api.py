@@ -113,7 +113,7 @@ class TestUpdate:
             cur.execute("SELECT entry_id FROM fruit WHERE fruit_name = 'apple'")
             id = cur.fetchone()[0]
             # submit POST request with update
-            r_valid1 = client.post('/update', data=json.dumps({'blob_type':'fruit','current_entry_id':id,'update_data':{'fruit_color':'silver'}}),content_type='application/json') 
+            r_valid1 = client.post('/blob/update', data=json.dumps({'blob_type':'fruit','current_entry_id':id,'update_data':{'fruit_color':'silver'}}),content_type='application/json') 
             # invalid or abscent:  blob_type,  entry_id, feild_change for given blob_type
             # assert returns expected 
             decode_valid1 = json.loads(r_valid1.data.decode("ASCII"))

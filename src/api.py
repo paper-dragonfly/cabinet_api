@@ -43,7 +43,6 @@ def create_app(env):
             elif request.method == 'POST':
                 try:
                     #extract info from POST
-                    # pdb.set_trace()
                     new_blob_info = BlobPostData.parse_obj(request.get_json()) 
                     blob_type = new_blob_info.metadata['blob_type']
                     if not blob_type in Blob_Type.keys():
