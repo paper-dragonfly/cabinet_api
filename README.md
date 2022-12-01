@@ -1,7 +1,8 @@
 ![Cabinet Logo](rubix2.jpeg)
 
-# cabinet_api
+# cabinet_api Version 1
 Flask API for Cabinet blob-storage platfrom 
+In this version blobs are stored as base64 byte strings in db
 
 # Description 
 Cabinet is a flexible blob-storage system that stores blobs and their associated metadata. It allows users to easily save and search for blobs based on their metadata values rather than file paths. The cabinet_api interfaces between the cabinet-sdk client and Cabinet postgreSQL database. 
