@@ -18,9 +18,18 @@ class Chess(BaseModel):
     entry_id: Optional[int]
     blob_type:str = 'chess'
 
-# Blob_type Reccord 
-Blob_Type = {'fruit':Fruit, 'chess':Chess}
-blob_classes = Union[Fruit, Chess]
+class Youtube(BaseModel):
+    entry_id: Optional[int]
+    blob_type:str = 'youtube'
+    blob_id:str = None 
+    photo_id: str 
+    channel: str
+    category: str
+    title:str 
+
+# Blob_type Record 
+Blob_Type = {'fruit':Fruit, 'chess':Chess, 'youtube':Youtube}
+blob_classes = Union[Fruit, Chess, Youtube]
 
 # endpoint inputs 
 

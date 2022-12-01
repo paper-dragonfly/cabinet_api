@@ -43,6 +43,7 @@ def create_app(env):
             elif request.method == 'POST':
                 try:
                     #extract info from POST
+                    # pdb.set_trace()
                     new_blob_info = BlobPostData.parse_obj(request.get_json()) 
                     blob_type = new_blob_info.metadata['blob_type']
                     if not blob_type in Blob_Type.keys():
@@ -51,7 +52,7 @@ def create_app(env):
                     #add blob to db
                     blob_id = f.add_blob(new_blob_info.blob_b64s, cur)
                     if not blob_id:
-                        return Response(status_code=400, e='BlobDuplication: blob already in cabinet')
+                        return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
                     # create dict with new_entry metadata including blob_id
                     # TODO: rewrite add_entry to accept parsed_metadata not dict
                     parsed_metadata.blob_id = blob_id 
@@ -68,11 +69,11 @@ def create_app(env):
 
     
     #TODO catch errors at /update how?
-    @app.route('/update', methods=['POST'])
+    @app.route('/blob/update', methods=['POST'])
     def update():
         try:
             conn, cur = db_connect(env)
-            try: 
+            try:
                 post_data = UpdatePostData.parse_obj(request.get_json())
                 validation = f.validate_update_fields(post_data.blob_type, post_data.update_data)
                 if not validation['valid']:

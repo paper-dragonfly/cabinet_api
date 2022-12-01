@@ -8,7 +8,7 @@ import psycopg2
 
 #DEFINE BLOB_TYPES HERE
 custom_blob_types = {
-    'youtube':{'photo_id':'VARCHAR', 'channel':'VARCHAR', 'title':'VARCHAR'},
+    'youtube':{'photo_id':'VARCHAR', 'channel':'VARCHAR', 'category':'VARCHAR', 'title':'VARCHAR'},
     'lichess': {'event':'VARCHAR', 'site':'VARCHAR', 'white':'VARCHAR', 'black':'VARCHAR', 'result':'VARCHAR', 'utcdate':'VARCHAR', 'utctime':'VARCHAR', 'whiteelo':'INT', 'blackelo':'INT', 'whiteratingdiff':'VARCHAR', 'blackratingdiff':'VARCHAR', 'eco':'VARCHAR', 'opening':'VARCHAR', 'timecontrol':'VARCHAR', 'termination':'VARCHAR', }
     }
 
@@ -62,6 +62,7 @@ def initialize(env):
         create_blob_table(cur)
         if env == 'testing':
             create_demo_table(cur)
+            create_new_blob_type('youtube',custom_blob_types['youtube'], cur)
         else: # instantiate your custom blob_types HERE
             for b_type in custom_blob_types:
                 create_new_blob_type(b_type, custom_blob_types[b_type], cur)
