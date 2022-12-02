@@ -1,19 +1,26 @@
 import os
-import yaml
 import pdb
+import yaml
 
 import psycopg2
 
-#NOTE: assumes cabinet and cabinet_test databases exist
+#NOTE: assumes databases for each environment already exist and that config/config.yaml contains a connection string to each database
 
-#DEFINE BLOB_TYPES HERE
-custom_blob_types = {
+# DEFINE BLOB_TYPES HERE
+blob_types = {
+    'fruit': {'fruit_name':'VARCHAR', 'fruit_color':'VARCHAR'}, 
     'youtube':{'photo_id':'VARCHAR', 'channel':'VARCHAR', 'category':'VARCHAR', 'title':'VARCHAR'},
     'lichess': {'event':'VARCHAR', 'site':'VARCHAR', 'white':'VARCHAR', 'black':'VARCHAR', 'result':'VARCHAR', 'utcdate':'VARCHAR', 'utctime':'VARCHAR', 'whiteelo':'INT', 'blackelo':'INT', 'whiteratingdiff':'VARCHAR', 'blackratingdiff':'VARCHAR', 'eco':'VARCHAR', 'opening':'VARCHAR', 'timecontrol':'VARCHAR', 'termination':'VARCHAR', }
+}
+
+# ASSIGN BLOB_TYPES TO ENVIRONMENTS
+env_blobs = {
+    'dev_local': ['youtube', 'lichess'],
+    'testing': ['fruit', 'youtube']
     }
 
 # Connection fns
-def setup_get_conn_str(env:str='dev_local', config_file:str='config/config.yaml') ->str:
+def setup_get_conn_str(env:str, config_file:str='config/config.yaml') ->str:
     with open(f'{config_file}', 'r') as f:
         config_dict = yaml.safe_load(f)
     conn_str = config_dict[env]['conn_str']
@@ -26,21 +33,11 @@ def setup_db_connect(env:str, autocommit:bool=False):
     conn.autocommit = autocommit
     return conn, cur 
 
-# STANDARD CABINET TABLES
+# Table creating fns 
 def create_blob_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS blob(
-        blob_id VARCHAR(64) PRIMARY KEY,
-        blob_b64s TEXT)""") 
-
-
-def create_demo_table(cur):
-    cur.execute("""CREATE TABLE IF NOT EXISTS fruit(
-        entry_id SERIAL PRIMARY KEY,
-        blob_type VARCHAR,
-        fruit_name VARCHAR,
-        fruit_color VARCHAR,
-        blob_id VARCHAR(64),
-        FOREIGN KEY (blob_id) REFERENCES blob(blob_id))""")
+        blob_id VARCHAR PRIMARY KEY,
+        blob_path VARCHAR)""") 
 
 def create_new_blob_type(blob_type:str, fields:dict, cur):
     fields_str = ""
@@ -55,18 +52,14 @@ def create_new_blob_type(blob_type:str, fields:dict, cur):
         FOREIGN KEY (blob_id) REFERENCES blob(blob_id))""")
 
 
-# CREATE TABLES
+# Create Tables
 def initialize(env):
     try:
         conn, cur = setup_db_connect(env,True) 
         create_blob_table(cur)
-        if env == 'testing':
-            create_demo_table(cur)
-            create_new_blob_type('youtube',custom_blob_types['youtube'], cur)
-        else: # instantiate your custom blob_types HERE
-            for b_type in custom_blob_types:
-                create_new_blob_type(b_type, custom_blob_types[b_type], cur)
-                print(f"{b_type} blob_type table created")
+        for b_type in env_blobs[env]:
+            create_new_blob_type(b_type, blob_types[b_type],cur)
+            print(f"{b_type} blob_type table created")
         print(f'{env} tables created') 
     finally:
         cur.close()
