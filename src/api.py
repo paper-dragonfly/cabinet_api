@@ -3,6 +3,7 @@ import json
 import os
 import pdb 
 
+from http import HTTPStatus
 from flask import Flask, request
 from pydantic import ValidationError
 
@@ -17,6 +18,9 @@ ENV = os.getenv('ENV')
 def create_app(env):
     app = Flask(__name__)
 
+    @app.route('/health', methods=['GET'])
+    def health():
+        return {"status": HTTPStatus.OK}
 
     @app.route('/home', methods=['GET'])
     def home():
