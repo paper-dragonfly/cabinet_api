@@ -2,6 +2,7 @@ import json
 import pdb
 import base64
 from urllib import response
+from hashlib import sha256
 
 import pytest
 
@@ -43,19 +44,20 @@ class TestBlob:
     def test_blob_post(self, client):
         """
         GIVEN a flask app
-        WHEN a POST request with table, metadata and blob_b64s (blob->str(base64)) is submitted to /blob
-        THEN assert returns int(entry_id)
+        WHEN a POST request with entry metadata is submitted to /blob
+        THEN assert metadata entry is added and API returns expected save_path
         """
         clear_all_tables()
         #create blob_b64s
         test_blob = 'a perfectly passionate poem about pineapples'
         blob_bytes = test_blob.encode('utf-8')
-        blob_base64 = base64.b64encode(blob_bytes)
-        blob_b64s = str(blob_base64)
+        b_hash = sha256(blob_bytes).hexdigest()
         # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_b64s':blob_b64s}),content_type='application/json')
+        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}}),content_type='application/json')
         # check API response is of expected type 
-        assert type(json.loads(response.data.decode("ASCII"))['body']['entry_id']) == int 
+        resp = json.loads(response.data.decode("ASCII"))['body']
+        expected_path = 'cabinet_api/blobs/'+b_hash
+        assert resp['paths'] == [expected_path]
         #check entry is in db
         try: 
             conn, cur = db_connect('testing')
@@ -78,7 +80,7 @@ class TestBlob:
         try: 
             # populate_db 
             conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_hash) VALUES('hash1'),('hash2'),('hash3')")
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash1','f/h1'),('hash2','f/h2'),('hash3','f/h3')")
             cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s)", ('1','fruit','banana','yellow','hash1','2','fruit','apple','red','hash2', '3','fruit','strawberry','red','hash3','4','fruit','banana','green','hash1'))
             # submit GET request
             # TODO 
@@ -108,7 +110,7 @@ class TestUpdate:
         try:
             # populate db with entries to update
             conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_hash) VALUES('hash1'),('hash2'),('hash3')")
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash1','f/h1'),('hash2','f/h2'),('hash3','f/h3')")
             cur.execute("INSERT INTO fruit(blob_type,fruit_name, fruit_color, blob_hash) VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('fruit','banana','yellow','hash1','fruit','apple','red','hash2','fruit','strawberry','red','hash3','fruit','banana','green','hash1'))
             cur.execute("SELECT entry_id FROM fruit WHERE fruit_name = 'apple'")
             id = cur.fetchone()[0]

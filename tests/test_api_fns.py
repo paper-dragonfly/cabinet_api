@@ -92,7 +92,7 @@ class TestInsert:
         try:
             #open connection and populate blob table
             conn, cur = f.db_connect('testing') 
-            cur.execute("INSERT INTO blob(blob_hash) VALUES('test_blob_hash') ON CONFLICT DO NOTHING")
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('test_blob_hash','folder/test_blob_hash') ON CONFLICT DO NOTHING")
             #pass metadata to fn 
             metadata = {'entry_id':None,'fruit_name': 'strawberry', 'fruit_color': 'red', 'blob_hash':'test_blob_hash'}
             metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_hash='test_blob_hash')
@@ -130,7 +130,7 @@ class TestSearch():
     def test_search_metadata(self):
         try:
             conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_hash) VALUES('hash1'),('hash2')")
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash1','f/h1'),('hash2','f/h2')")
             cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s)",('1','fruit','banana','yellow','hash1','2','fruit','mango','yellow','hash2'))
             assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'blob_type':['fruit'], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_hash':['hash1']}
             assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'blob_type':['fruit','fruit'],'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_hash':['hash1','hash2']}
@@ -157,7 +157,7 @@ class TestFnsUpdate:
         try:
             conn, cur = db_connect('testing')
             #populate db with old entry
-            cur.execute("INSERT INTO blob(blob_hash) VALUES('hash5')")
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash5','f/h5')")
             cur.execute("INSERT INTO fruit VALUES('55','fruit','banana','green','hash5')")
             # test fn
             current_metadata = f.get_current_metadata('fruit','55',cur)
@@ -185,7 +185,7 @@ def test_retrieve_blob():
     try:
         # populate db with blob and metadata
         conn, cur = db_connect('testing')
-        cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','blob_b64s pineapple'))
+        cur.execute('INSERT INTO blob VALUES(%s, %s, %s)',('hash1','f/pineapple','saved'))
         cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
         search_dict = {'blob_type':'fruit','entry_id':101}
         assert f.retrieve_blob(search_dict, cur) == 'blob_b64s pineapple'
