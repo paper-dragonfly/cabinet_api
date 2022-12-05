@@ -179,11 +179,14 @@ def make_full_update_dict(updates:dict, current_metadata:dict):
 
 # ________________
 
-def retrieve_blob(search_args: dict, cur) -> str:
+def retrieve_paths(search_args: dict, cur) -> str:
     cur.execute(f"SELECT blob_hash FROM {search_args['blob_type']} WHERE entry_id = %s",(search_args['entry_id'],))
     blob_hash = cur.fetchone()[0] 
-    cur.execute('SELECT blob_b64s From blob WHERE blob_hash=%s',(blob_hash,)) 
-    blob_b64s = cur.fetchone()[0] 
-    return blob_b64s
+    cur.execute('SELECT blob_path From blob WHERE blob_hash=%s',(blob_hash,)) 
+    matches = cur.fetchall() #[(p1,),(p2,)]
+    paths = []
+    for match in matches:
+        paths.append(match[0])
+    return paths
 
  

@@ -141,12 +141,12 @@ def test_retrieve(client): #TODO Need to write supporting end point and library 
     try:
         # populate db with blob and metadata
         conn, cur = db_connect('testing')
-        cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','blob_b64s pineapple'))
+        cur.execute('INSERT INTO blob VALUES(%s, %s,%s)',('hash1','f/hash1','saved'))
         cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
         # send request, capture resp
         valid_resp = client.get('/blob/fruit/101')
         assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
-        assert json.loads(valid_resp.data.decode("ascii"))['body'] == {'blob':'blob_b64s pineapple'}
+        assert json.loads(valid_resp.data.decode("ascii"))['body'] == {'paths':['f/hash1']}
     finally:
         cur.close()
         conn.close()

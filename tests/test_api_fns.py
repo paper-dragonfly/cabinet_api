@@ -180,7 +180,7 @@ class TestFnsUpdate:
         assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_hash': 'hash5', 'fruit_color': 'yellow', 'fruit_name': 'banana'}
 
 
-def test_retrieve_blob():
+def test_retrieve_paths():
     clear_all_tables()
     try:
         # populate db with blob and metadata
@@ -188,7 +188,7 @@ def test_retrieve_blob():
         cur.execute('INSERT INTO blob VALUES(%s, %s, %s)',('hash1','f/pineapple','saved'))
         cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
         search_dict = {'blob_type':'fruit','entry_id':101}
-        assert f.retrieve_blob(search_dict, cur) == 'blob_b64s pineapple'
+        assert f.retrieve_paths(search_dict, cur) == ['f/pineapple']
     finally:
         cur.close()
         conn.close()

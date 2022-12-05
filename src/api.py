@@ -114,7 +114,7 @@ def create_app(env):
     @app.route('/blob/<blob_type>/<id>', methods=['GET']) 
     def retrieve(blob_type=None, id=None):
         """
-        Retrun blob associate with submitted entry_id 
+        Retrun list of locations where blob is saved
         """
         # confirm submitted args are valid
         try:
@@ -127,8 +127,8 @@ def create_app(env):
         # get blob
         try:
             conn, cur = db_connect(env=env)
-            blob = f.retrieve_blob(search_dict,cur)
-            return Response(body={'blob':blob}).json()
+            paths = f.retrieve_paths(search_dict,cur)
+            return Response(body={'paths':paths}).json()
         except: 
             return Response(status_code=500, error_message='ConnectionError').json()
         finally:
