@@ -48,8 +48,9 @@ def create_new_blob_type(blob_type:str, fields:dict, cur):
     cur.execute(f"""CREATE TABLE IF NOT EXISTS {blob_type}(
         entry_id SERIAL PRIMARY KEY,
         blob_type VARCHAR,
-        blob_hash VARCHAR(64),
-        {fields_str} """)
+        {fields_str}
+        blob_hash VARCHAR(64)
+        )""")
 
 
 # Create Tables

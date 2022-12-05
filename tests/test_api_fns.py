@@ -1,6 +1,7 @@
 import pdb
 import re
 import base64
+from hashlib import sha256
 
 import psycopg2
 
@@ -36,24 +37,34 @@ class TestConnections:
 
 
 class TestInsert:
-    def test_add_blob(self):
+    def test_generate_paths(self):
+        """
+        GIVEN a sha256 hash of the blob
+        WHEN has is passed to fn
+        ASSERT returns expected list of paths
+        """
+        blob = 'Hello World'
+        blob_hash = sha256(blob.encode('ascii')).hexdigest()
+        paths = f.generate_paths(blob_hash)
+        assert paths == ['cabinet_api/blobs/a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e']
+
+    def test_add_blob_paths(self):
         clear_all_tables()
         """
         GIVEN a postgres db, the add_blob fn and a blob encoded as a base_64_bytes_str
         WHEN blob is passed to add_blob fn
         THEN assert an integer of length 64 is returned (sha256 Hash)
         """
-        #create test blob
-        s = 'Hello World'
-        myblob:bytes = s.encode('ascii')
-        blob_b64 = base64.b64encode(myblob)
-        blob_b64_str = blob_b64.decode('ascii')
+        #declare test blob_hash
+        blob_hash = 'a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e'
+        paths = ['cabinet_api/blobs/a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e']
         # pass to fn
         try:
             conn, cur = f.db_connect('testing')
-            resp = f.add_blob(blob_b64_str,cur)
-            assert type(resp) == str
-            assert len(resp) == 64
+            resp = f.add_blob_paths(blob_hash,paths,cur)
+            assert resp == True
+            resp = f.add_blob_paths(blob_hash, paths, cur)
+            assert resp == False 
         finally:
             cur.close()
             conn.close()

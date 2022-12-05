@@ -51,27 +51,13 @@ def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
     Stores shaa256 hash for blobs alongside path to where blob is saved. The same blob may be saved in multiple places thus the same hash may appear in multiple entries pointing to different locations
     """
     # is blob already in cabiney? 
-    cur.execute('SELECT 1 FROM blob WHERE blob_hash = %s', (blob_hash))
-    if not cur.fetchone():
+    cur.execute("SELECT COUNT(1) FROM blob WHERE blob_hash = %s", (blob_hash,))
+    if cur.fetchone()[0]:
         return False 
     # add paths 
     for path in paths:
         cur.execute('INSERT INTO blob VALUES (%s,%s,%s)', (blob_hash,path,'pending')) 
     return True
-    
-# def add_blob(blob_b64s:str, cur) -> str: 
-#     """
-#     Takes a base64 encoded string version of the blob and stores it in the blob table of the Cabinet database generating and returning a shaa256 hash id for the blob
-#     """
-#     #convert blob_b64s -> blob_bytes?
-#     # TODO: Q. Catch potential errors?
-#     blob_b64_bytes = blob_b64s.encode('ascii')
-#     blob_hash = sha256(blob_b64_bytes).hexdigest()
-#     try: 
-#         cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_hash,blob_b64s))
-#     except Exception:
-#         return False 
-#     return blob_hash
 
 
 def build_insert_query(metadata:blob_classes) -> tuple:
