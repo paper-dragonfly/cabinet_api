@@ -6,3 +6,4 @@ sandbox.py
 sandbox.ipynb
 dist/*
 *.egg-info
+blobs/*

@@ -42,6 +42,16 @@ def create_app(env):
 
             elif request.method == 'POST':
                 try:
+                    new_blob_info = BlobPostData.parse_obj(request.get_json()) 
+                    blob_type = new_blob_info.metadata['blob_type']
+                    if not blob_type in Blob_Type.keys():
+                        return Response(status_code=400,error_message= f'{blob_type} blob_type does not exist').json()
+                    parsed_metadata = Blob_Type[blob_type].parse_obj(new_blob_info.metadata)
+                    #generate file_path from metadata add blob to db
+
+
+
+                try:
                     #extract info from POST
                     new_blob_info = BlobPostData.parse_obj(request.get_json()) 
                     blob_type = new_blob_info.metadata['blob_type']

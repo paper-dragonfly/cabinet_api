@@ -38,8 +38,7 @@ class BlobGetData(BaseModel):
 
 class BlobPostData(BaseModel):
     metadata:dict
-    blob_b64s:str
-
+    
 
 class UpdatePostData(BaseModel):
     blob_type: str

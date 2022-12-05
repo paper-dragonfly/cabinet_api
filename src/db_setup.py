@@ -36,8 +36,8 @@ def setup_db_connect(env:str, autocommit:bool=False):
 # Table creating fns 
 def create_blob_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS blob(
-        blob_id VARCHAR PRIMARY KEY,
-        blob_path VARCHAR)""") 
+        blob_id VARCHAR(64),
+        blob_path VARCHAR PRIMARY KEY)""") 
 
 def create_new_blob_type(blob_type:str, fields:dict, cur):
     fields_str = ""
@@ -48,8 +48,7 @@ def create_new_blob_type(blob_type:str, fields:dict, cur):
         entry_id SERIAL PRIMARY KEY,
         blob_type VARCHAR,
         blob_id VARCHAR(64),
-        {fields_str}
-        FOREIGN KEY (blob_id) REFERENCES blob(blob_id))""")
+        {fields_str} """)
 
 
 # Create Tables
