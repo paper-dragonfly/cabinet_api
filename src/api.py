@@ -47,27 +47,15 @@ def create_app(env):
                     if not blob_type in Blob_Type.keys():
                         return Response(status_code=400,error_message= f'{blob_type} blob_type does not exist').json()
                     parsed_metadata = Blob_Type[blob_type].parse_obj(new_blob_info.metadata)
-                    #generate file_path from metadata add blob to db
-
-
-
-                try:
-                    #extract info from POST
-                    new_blob_info = BlobPostData.parse_obj(request.get_json()) 
-                    blob_type = new_blob_info.metadata['blob_type']
-                    if not blob_type in Blob_Type.keys():
-                        return Response(status_code=400,error_message= f'{blob_type} blob_type does not exist').json()
-                    parsed_metadata = Blob_Type[blob_type].parse_obj(new_blob_info.metadata)
-                    #add blob to db
-                    blob_id = f.add_blob(new_blob_info.blob_b64s, cur)
-                    if not blob_id:
+                    save_paths = f.generate_paths(parsed_metadata.blob_hash) 
+                    # add paths to blob table (id = hash, path = cabinet_api/blobs/hash)
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, save_paths,cur)
+                    if not paths_added:
                         return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
-                    # create dict with new_entry metadata including blob_id
-                    # TODO: rewrite add_entry to accept parsed_metadata not dict
-                    parsed_metadata.blob_id = blob_id 
                     # add metadata entry to db
                     entry_id = f.add_entry(parsed_metadata, cur)
-                    return Response(body={'entry_id':entry_id}).json()
+                    # send file_path(s) to SDK 
+                    return Response(body={'paths':save_paths}).json()
                 except (TypeError, ValueError) as e:
                     return Response(status_code=400, error_message= e).json()
         except:

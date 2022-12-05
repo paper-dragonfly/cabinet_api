@@ -41,20 +41,37 @@ def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
     return env_host, env_port
 
 
+def generate_paths(blob_hash:str) -> list:
+    bucket = ['cabinet_api/blobs/']
+    return [b+blob_hash for b in bucket]
+    
 
-def add_blob(blob_b64s:str, cur) -> str: 
+def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
     """
-    Takes a base64 encoded string version of the blob and stores it in the blob table of the Cabinet database generating and returning a shaa256 hash id for the blob
+    Stores shaa256 hash for blobs alongside path to where blob is saved. The same blob may be saved in multiple places thus the same hash may appear in multiple entries pointing to different locations
     """
-    #convert blob_b64s -> blob_bytes?
-    # TODO: Q. Catch potential errors?
-    blob_b64_bytes = blob_b64s.encode('ascii')
-    blob_id = sha256(blob_b64_bytes).hexdigest()
-    try: 
-        cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_id,blob_b64s))
-    except Exception:
+    # is blob already in cabiney? 
+    cur.execute('SELECT 1 FROM blob WHERE blob_hash = %s', (blob_hash))
+    if not cur.fetchone():
         return False 
-    return blob_id
+    # add paths 
+    for path in paths:
+        cur.execute('INSERT INTO blob VALUES (%s,%s,%s)', (blob_hash,path,'pending')) 
+    return True
+    
+# def add_blob(blob_b64s:str, cur) -> str: 
+#     """
+#     Takes a base64 encoded string version of the blob and stores it in the blob table of the Cabinet database generating and returning a shaa256 hash id for the blob
+#     """
+#     #convert blob_b64s -> blob_bytes?
+#     # TODO: Q. Catch potential errors?
+#     blob_b64_bytes = blob_b64s.encode('ascii')
+#     blob_hash = sha256(blob_b64_bytes).hexdigest()
+#     try: 
+#         cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_hash,blob_b64s))
+#     except Exception:
+#         return False 
+#     return blob_hash
 
 
 def build_insert_query(metadata:blob_classes) -> tuple:
@@ -78,6 +95,7 @@ def add_entry(metadata:blob_classes, cur)->int:
     cur.execute(sql_query, entry_vals)
     entry_id = cur.fetchone()[0] 
     return entry_id
+    # return True
 #__________________
 
 def all_entries(blob_type: str, cur):
@@ -176,9 +194,9 @@ def make_full_update_dict(updates:dict, current_metadata:dict):
 # ________________
 
 def retrieve_blob(search_args: dict, cur) -> str:
-    cur.execute(f"SELECT blob_id FROM {search_args['blob_type']} WHERE entry_id = %s",(search_args['entry_id'],))
-    blob_id = cur.fetchone()[0] 
-    cur.execute('SELECT blob_b64s From blob WHERE blob_id=%s',(blob_id,)) 
+    cur.execute(f"SELECT blob_hash FROM {search_args['blob_type']} WHERE entry_id = %s",(search_args['entry_id'],))
+    blob_hash = cur.fetchone()[0] 
+    cur.execute('SELECT blob_b64s From blob WHERE blob_hash=%s',(blob_hash,)) 
     blob_b64s = cur.fetchone()[0] 
     return blob_b64s
 

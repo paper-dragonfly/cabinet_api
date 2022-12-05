@@ -31,7 +31,7 @@ Within Cabinet, entries are organized by blob_type. Each blob_type has its own m
 To add a new blob_type:
 1. Navigate to src/db_setup.py 
 2. In the 'DEFINE BLOB_TYPES HERE' section, create a dictionary where the key is the blob_type and the value is a sub-dict with metadata fields as keys and field_datatype as values. 
-    * Note: all blob_types have fields entry_id, blob_type and blob_id. Do not include these in your blob_type definition, they will be added automatically 
+    * Note: all blob_types have fields entry_id, blob_type and blob_hash. Do not include these in your blob_type definition, they will be added automatically 
 3. Run db_setup.py 
 4. Navigate to the Blob Types section of src/classes.py  
 5. create a new class with attributes corresponding the the fields for the new blob_type

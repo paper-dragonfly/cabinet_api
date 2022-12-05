@@ -3,7 +3,7 @@ from typing import Optional, Union
 from pydantic import BaseModel
 
 # NOTE
-# 1. blob_id default to 0 to allow for initial type-hint enforcement before blob added to db
+# 1. blob_hash default to 0 to allow for initial type-hint enforcement before blob added to db
 
 # Blob Types 
 
@@ -12,7 +12,7 @@ class Fruit(BaseModel):
     blob_type:str 
     fruit_name:str 
     fruit_color: Optional[str]
-    blob_id:str = None
+    blob_hash:str 
 
 class Chess(BaseModel):
     entry_id: Optional[int]
@@ -21,7 +21,7 @@ class Chess(BaseModel):
 class Youtube(BaseModel):
     entry_id: Optional[int]
     blob_type:str = 'youtube'
-    blob_id:str = None 
+    blob_hash:str  
     photo_id: str 
     channel: str
     category: str

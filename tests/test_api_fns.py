@@ -66,9 +66,9 @@ class TestInsert:
         WHEN dict is passed to fn
         THEN assert expected tuple(sql_query:str, values:tuple) is returned
         """
-        metadata = Fruit(entry_id=55, blob_type='fruit', fruit_name='apple', fruit_color='gold',blob_id='hash')
+        metadata = Fruit(entry_id=55, blob_type='fruit', fruit_name='apple', fruit_color='gold',blob_hash='hash')
         returned = f.build_insert_query(metadata)
-        expected = (f'INSERT INTO fruit(blob_type, fruit_name, fruit_color, blob_id) VALUES(%s,%s,%s,%s) RETURNING entry_id',('fruit', 'apple','gold','hash'))
+        expected = (f'INSERT INTO fruit(blob_type, fruit_name, fruit_color, blob_hash) VALUES(%s,%s,%s,%s) RETURNING entry_id',('fruit', 'apple','gold','hash'))
         assert returned == expected 
 
 
@@ -81,10 +81,10 @@ class TestInsert:
         try:
             #open connection and populate blob table
             conn, cur = f.db_connect('testing') 
-            cur.execute("INSERT INTO blob(blob_id) VALUES('test_blob_hash') ON CONFLICT DO NOTHING")
+            cur.execute("INSERT INTO blob(blob_hash) VALUES('test_blob_hash') ON CONFLICT DO NOTHING")
             #pass metadata to fn 
-            metadata = {'entry_id':None,'fruit_name': 'strawberry', 'fruit_color': 'red', 'blob_id':'test_blob_hash'}
-            metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_id='test_blob_hash')
+            metadata = {'entry_id':None,'fruit_name': 'strawberry', 'fruit_color': 'red', 'blob_hash':'test_blob_hash'}
+            metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_hash='test_blob_hash')
             returned_entry_id = f.add_entry(metadata, cur) 
             assert type(returned_entry_id) == int
         finally:
@@ -114,15 +114,15 @@ class TestSearch():
 
     def test_build_results_dict(self):
         matches = [('1','fruit','plum','red','phash'),('2','fruit','plum','green','phash')]
-        assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'blob_type':['fruit','fruit'],'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_id':['phash','phash']}
+        assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'blob_type':['fruit','fruit'],'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_hash':['phash','phash']}
 
     def test_search_metadata(self):
         try:
             conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2')")
+            cur.execute("INSERT INTO blob(blob_hash) VALUES('hash1'),('hash2')")
             cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s)",('1','fruit','banana','yellow','hash1','2','fruit','mango','yellow','hash2'))
-            assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'blob_type':['fruit'], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_id':['hash1']}
-            assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'blob_type':['fruit','fruit'],'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_id':['hash1','hash2']}
+            assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'blob_type':['fruit'], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_hash':['hash1']}
+            assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'blob_type':['fruit','fruit'],'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_hash':['hash1','hash2']}
             assert f.search_metadata('fruit',{'fruit_name':'pear'},cur) == None 
         finally: 
             cur.close()
@@ -146,11 +146,11 @@ class TestFnsUpdate:
         try:
             conn, cur = db_connect('testing')
             #populate db with old entry
-            cur.execute("INSERT INTO blob(blob_id) VALUES('hash5')")
+            cur.execute("INSERT INTO blob(blob_hash) VALUES('hash5')")
             cur.execute("INSERT INTO fruit VALUES('55','fruit','banana','green','hash5')")
             # test fn
             current_metadata = f.get_current_metadata('fruit','55',cur)
-            assert current_metadata == {'blob_id': 'hash5', 'entry_id': 55, 'blob_type':'fruit', 'fruit_color': 'green', 'fruit_name': 'banana'}
+            assert current_metadata == {'blob_hash': 'hash5', 'entry_id': 55, 'blob_type':'fruit', 'fruit_color': 'green', 'fruit_name': 'banana'}
         finally: 
             cur.execute('DELETE FROM fruit')
             cur.execute('DELETE FROM blob')
@@ -165,8 +165,8 @@ class TestFnsUpdate:
         THEN assert returns expected combo dict
         """
         update_dict = {'fruit_color':'yellow'} 
-        old_metadata = {'blob_id': 'hash5', 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
-        assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_id': 'hash5', 'fruit_color': 'yellow', 'fruit_name': 'banana'}
+        old_metadata = {'blob_hash': 'hash5', 'entry_id': 55, 'fruit_color': 'green', 'fruit_name': 'banana'}
+        assert f.make_full_update_dict(update_dict, old_metadata) == {'blob_hash': 'hash5', 'fruit_color': 'yellow', 'fruit_name': 'banana'}
 
 
 def test_retrieve_blob():
@@ -175,7 +175,7 @@ def test_retrieve_blob():
         # populate db with blob and metadata
         conn, cur = db_connect('testing')
         cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','blob_b64s pineapple'))
-        cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_id) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
+        cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
         search_dict = {'blob_type':'fruit','entry_id':101}
         assert f.retrieve_blob(search_dict, cur) == 'blob_b64s pineapple'
     finally:
