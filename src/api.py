@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobPostData, UpdatePostData, Blob_Type, Response, RetrieveBlob, blob_classes, Fields
+from src.classes import Fruit, BlobPostData, BlobPutData, UpdatePostData, Blob_Type, Response, RetrieveBlob, blob_classes, Fields
 
 ENV = os.getenv('ENV')
 
@@ -55,9 +55,20 @@ def create_app(env):
                     # add metadata entry to db
                     entry_id = f.add_entry(parsed_metadata, cur)
                     # send file_path(s) to SDK 
-                    return Response(body={'paths':save_paths}).json()
+                    return Response(body={'entry_id':entry_id, 'paths':save_paths}).json()
                 except (TypeError, ValueError) as e:
                     return Response(status_code=400, error_message= e).json()
+            
+            elif request.method == 'PUT':
+                try:
+                    put_data = BlobPutData.parse_obj(request.get_json())
+                    saved_paths = put_data.paths 
+                    for path in saved_paths:
+                        f.update_save_status(path)
+                    return Response().json()
+                except (TypeError, ValueError) as e:
+                    return Response(status_code=400, error_message= e).json()
+                
         except:
             return Response(status_code=500, error_message='UnexpectedError').json
         finally:

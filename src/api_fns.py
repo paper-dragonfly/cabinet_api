@@ -42,7 +42,7 @@ def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
 
 
 def generate_paths(blob_hash:str) -> list:
-    bucket = ['cabinet_api/blobs/']
+    bucket = ['blobs/']
     return [b+blob_hash for b in bucket]
     
 
@@ -81,7 +81,12 @@ def add_entry(metadata:blob_classes, cur)->int:
     cur.execute(sql_query, entry_vals)
     entry_id = cur.fetchone()[0] 
     return entry_id
-    # return True
+
+
+def update_save_status(path:str, cur):
+    cur.execute('UPDATE blob SET status = %s WHERE blob_path = %s',('saved', path))
+    return True 
+
 #__________________
 
 def all_entries(blob_type: str, cur):

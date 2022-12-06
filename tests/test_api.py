@@ -56,7 +56,7 @@ class TestBlob:
         response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}}),content_type='application/json')
         # check API response is of expected type 
         resp = json.loads(response.data.decode("ASCII"))['body']
-        expected_path = 'cabinet_api/blobs/'+b_hash
+        expected_path = 'blobs/'+b_hash
         assert resp['paths'] == [expected_path]
         #check entry is in db
         try: 

@@ -39,7 +39,9 @@ class BlobGetData(BaseModel):
 class BlobPostData(BaseModel):
     metadata:dict
     
-
+class BlobPutData(BaseModel):
+    paths: list
+    
 class UpdatePostData(BaseModel):
     blob_type: str
     current_entry_id:int 

@@ -46,7 +46,7 @@ class TestInsert:
         blob = 'Hello World'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
         paths = f.generate_paths(blob_hash)
-        assert paths == ['cabinet_api/blobs/a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e']
+        assert paths == ['blobs/a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e']
 
     def test_add_blob_paths(self):
         clear_all_tables()
@@ -98,6 +98,24 @@ class TestInsert:
             metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_hash='test_blob_hash')
             returned_entry_id = f.add_entry(metadata, cur) 
             assert type(returned_entry_id) == int
+        finally:
+            # clear table, close connections
+            cur.execute("DELETE FROM fruit")
+            cur.execute("DELETE FROM blob")
+            cur.close()
+            conn.close()
+
+    def test_update_save_status(self):
+        clear_all_tables()
+        #open connection and populate blob table
+        try: 
+            conn, cur = f.db_connect('testing') 
+            cur.execute("INSERT INTO blob(blob_hash, blob_path, status) VALUES('test_blob_hash','folder/test_blob_hash', 'pending') ON CONFLICT DO NOTHING")
+            # update
+            resp = f.update_save_status('folder/test_blob_hash', cur)
+            assert resp == True 
+            cur.execute("SELECT status FROM blob WHERE blob_path = %s",('folder/test_blob_hash',))
+            assert cur.fetchone()[0] == 'saved'
         finally:
             # clear table, close connections
             cur.execute("DELETE FROM fruit")
