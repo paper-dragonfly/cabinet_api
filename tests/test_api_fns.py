@@ -217,10 +217,3 @@ def test_clean():
     return True 
 
 
-
-# def test_():
-#     try:
-#         conn, cur = db_connect('testing')
-#     finally: 
-#         cur.close()
-#         conn.close()

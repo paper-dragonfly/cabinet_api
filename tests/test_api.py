@@ -48,7 +48,7 @@ class TestBlob:
         THEN assert metadata entry is added and API returns expected save_path
         """
         clear_all_tables()
-        #create blob_b64s
+        #create blob_hash
         test_blob = 'a perfectly passionate poem about pineapples'
         blob_bytes = test_blob.encode('utf-8')
         b_hash = sha256(blob_bytes).hexdigest()
