@@ -103,6 +103,26 @@ class TestBlob:
             cur.close()
             conn.close()
 
+    def test_blob_put(self, client):
+        """
+        GIVEN a flask app 
+        WHEN a PUT request is sent to /blob containing a list of paths to where blob is saved
+        THEN assert updates matching status value to 'saved'  
+        """
+        clear_all_tables()
+        try: 
+            # populate_db 
+            conn, cur = db_connect('testing')
+            cur.execute("INSERT INTO blob(blob_hash, blob_path, status) VALUES('hash1','f/h1', 'pending'),('hash2','f/h2','pending'),('hash3','f/h3','pending')")
+            # update and check
+            resp1 = client.put('/blob', data=json.dumps({'paths':['f/h1','f/h2']}),content_type='application/json')
+            assert json.loads(resp1.data.decode("ASCII"))['status_code'] == 200 
+            cur.execute("SELECT status FROM blob")
+            assert cur.fetchall() == [('pending',),('saved',),('saved',)]
+        finally:
+            cur.close()
+            conn.close()
+
 class TestUpdate:
 
     def test_update(self, client):

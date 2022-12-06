@@ -21,10 +21,11 @@ def create_app(env):
         return 'WELCOME TO CABINET'
 
 
-    @app.route('/blob', methods=['GET', 'POST'])
+    @app.route('/blob', methods=['GET', 'POST', 'PUT'])
     def blob(): 
         try:
             conn, cur = db_connect(env=env)
+
             if request.method == 'GET':
                 user_search = request.args.to_dict()
                 if not 'blob_type' in user_search.keys():
@@ -64,7 +65,7 @@ def create_app(env):
                     put_data = BlobPutData.parse_obj(request.get_json())
                     saved_paths = put_data.paths 
                     for path in saved_paths:
-                        f.update_save_status(path)
+                        f.update_save_status(path, cur)
                     return Response().json()
                 except (TypeError, ValueError) as e:
                     return Response(status_code=400, error_message= e).json()

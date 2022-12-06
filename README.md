@@ -9,7 +9,9 @@ Cabinet is a flexible blob-storage system that stores blobs and their associated
 
 ## Installation and Setup
 
-Download from github: https://github.com/paper-dragonfly/cabinet_api
+1. Download API repo: https://github.com/paper-dragonfly/cabinet_api
+2. Install dependencies with `pip install -r requirements.txt`
+3. Run API with `python -m flask --app src/api run` (??) 
 
 Designed to be used in conjunction with the cabinet-sdk package: Download cabinet-sdk using: ```pip install -i https://test.pypi.org/simple/ cabinet-sdk``` 
 
