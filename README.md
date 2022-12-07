@@ -11,15 +11,16 @@ Cabinet is a flexible blob-storage system that stores blobs and their associated
 
 1. Download API repo: https://github.com/paper-dragonfly/cabinet_api
 2. Install dependencies with `pip install -r requirements.txt`
-3. Run API with `python -m flask --app src/api run` (??) 
+3. Run API:
+    *  `python -m flask --app "src.api:create_app('<ENVIRONMENT>')" run` (development/testing) 
+    *  `gunicorn --bind 0.0.0.0:5000 "src.api:create_app('<ENVIRONMENT>')"` (production) 
+5. Download cabinet-sdk with: `pip install -i https://test.pypi.org/simple/ cabinet-sdk`
+6. Create empty postgreSQL database called 'cabinet' and another called 'cabinet_test' 
+    * See Create Blob_types section below for instructions on populating these databases
 
-Designed to be used in conjunction with the cabinet-sdk package: Download cabinet-sdk using: ```pip install -i https://test.pypi.org/simple/ cabinet-sdk``` 
-
-Create an empty postgreSQL database called 'cabinet' and another called 'cabinet_test'. See Create Blob_types section below for instructions on populating these databases
-
-The default environment for Cabinet is dev_local. To change environment, use the command line to set environment variable ENV to the desired environment: ```export ENV='<environment>'```. This is used if you have more than one cabinet database, such as a local database and a remote database. 
+The default environment for Cabinet is dev_local. To change environment, use the command line to set environment variable ENV to the desired environment: ```export ENV='<environment>'```. This is used if you have more than one cabinet database, such as a local database, test database and remote database. 
 Note: this ENV assignment will only last for the duration of your command line session. 
-Note2: Regardless of the value of ENV, pytest will run the api app in testing mode. No need to set ENV='testing' to run pytest. 
+Note2: Regardless of the value of ENV, pytest will run in testing mode. No need to set ENV='testing' to run pytest. 
 
 Use the following CL command to run the API: ```python3 src/api.py```
 

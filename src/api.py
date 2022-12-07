@@ -9,8 +9,6 @@ from src.api_fns import db_connect
 import src.api_fns as f
 from src.classes import Fruit, BlobPostData, BlobPutData, UpdatePostData, Blob_Type, Response, RetrieveBlob, blob_classes, Fields
 
-ENV = os.getenv('ENV')
-
 
 def create_app(env):
     app = Flask(__name__)
@@ -136,7 +134,7 @@ def create_app(env):
             return Response(status_code=400, error_message= e).json()
         if search_args.blob_type not in Blob_Type.keys():
             return Response(status_code=400, error_message= "BlobTypeError: invalid blob_tpype").json()
-        # get blob
+        # get blob paths
         try:
             conn, cur = db_connect(env=env)
             paths = f.retrieve_paths(search_dict,cur)
@@ -149,12 +147,3 @@ def create_app(env):
             
     return app
 
-
-if __name__ == '__main__':
-    if ENV:
-        app = create_app(ENV)
-        host, api_port = f.get_env_info(ENV)
-    else: #defualt
-        app = create_app('dev_local')
-        host, api_port = f.get_env_info('dev_local')
-    app.run(host, api_port, debug=True)
