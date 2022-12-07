@@ -1,20 +1,26 @@
 import json 
 import os
 import pdb 
+from http import HTTPStatus
 
 from flask import Flask, request
 from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobPostData, BlobPutData, UpdatePostData, Blob_Type, Response, RetrieveBlob, blob_classes, Fields
+from src.classes import Fruit, BlobPostSchema, BlobPutSchema, UpdatePostSchema, BLOB_TYPES, Response, RetrieveBlob, blob_classes, Fields
 
 
 def create_app(env):
     app = Flask(__name__)
 
 
-    @app.route('/home', methods=['GET'])
+    @app.route('/health', methods=['GET'])
+    def health():
+        return {"status": HTTPStatus.OK}
+
+
+    @app.route('/', methods=['GET'])
     def home():
         return 'WELCOME TO CABINET'
 
@@ -41,13 +47,13 @@ def create_app(env):
 
             elif request.method == 'POST':
                 try:
-                    new_blob_info = BlobPostData.parse_obj(request.get_json()) 
+                    new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
                     blob_type = new_blob_info.metadata['blob_type']
-                    if not blob_type in Blob_Type.keys():
+                    if not blob_type in BLOB_TYPES.keys():
                         return Response(status_code=400,error_message= f'{blob_type} blob_type does not exist').json()
-                    parsed_metadata = Blob_Type[blob_type].parse_obj(new_blob_info.metadata)
+                    parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
                     save_paths = f.generate_paths(parsed_metadata.blob_hash) 
-                    # add paths to blob table (id = hash, path = cabinet_api/blobs/hash)
+                    # add paths to blob table (id = hash, path = blobs/hash)
                     paths_added = f.add_blob_paths(parsed_metadata.blob_hash, save_paths,cur)
                     if not paths_added:
                         return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
@@ -60,7 +66,7 @@ def create_app(env):
             
             elif request.method == 'PUT':
                 try:
-                    put_data = BlobPutData.parse_obj(request.get_json())
+                    put_data = BlobPutSchema.parse_obj(request.get_json())
                     saved_paths = put_data.paths 
                     for path in saved_paths:
                         f.update_save_status(path, cur)
@@ -81,12 +87,12 @@ def create_app(env):
         try:
             conn, cur = db_connect(env)
             try:
-                post_data = UpdatePostData.parse_obj(request.get_json())
+                post_data = UpdatePostSchema.parse_obj(request.get_json())
                 validation = f.validate_update_fields(post_data.blob_type, post_data.update_data)
                 if not validation['valid']:
                     return Response(status_code= 400,error_message= validation['error']).json()
                 current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,cur)
-                full_update_inst = Blob_Type[post_data.blob_type].parse_obj(f.make_full_update_dict(post_data.update_data, current_metadata))
+                full_update_inst = BLOB_TYPES[post_data.blob_type].parse_obj(f.make_full_update_dict(post_data.update_data, current_metadata))
                 updated_entry_id = f.add_entry(full_update_inst, cur)
                 return Response(body={'entry_id': updated_entry_id}).json()
             except (TypeError, ValueError) as e: 
@@ -107,15 +113,15 @@ def create_app(env):
             blob_type = Fields.parse_obj(request.args.to_dict()).blob_type
         except Exception as e: 
             return Response(status_code=400, error_message= e.json()).json()
-        if blob_type not in Blob_Type.keys() and blob_type != 'return_all_blob_types':
-            api_resp = Response(status_code = 400, error_message = 'Blob_TypeError: invalid blob_type', body = request.args.to_dict())
+        if blob_type not in BLOB_TYPES.keys() and blob_type != 'return_all_blob_types':
+            api_resp = Response(status_code = 400, error_message = 'BLOB_TYPESError: invalid blob_type', body = request.args.to_dict())
         else:
             blob_types_list = [blob_type]
             if blob_type == 'return_all_blob_types':
-                blob_types_list = Blob_Type.keys()
+                blob_types_list = BLOB_TYPES.keys()
             types_and_fields = {}
             for t in blob_types_list:
-                bkeys = list(Blob_Type[t].__fields__.keys())
+                bkeys = list(BLOB_TYPES[t].__fields__.keys())
                 types_and_fields[t] = bkeys
             api_resp = Response(body= types_and_fields)
         return api_resp.json()
@@ -132,7 +138,7 @@ def create_app(env):
             search_dict = search_args.dict()
         except (TypeError, ValueError) as e: 
             return Response(status_code=400, error_message= e).json()
-        if search_args.blob_type not in Blob_Type.keys():
+        if search_args.blob_type not in BLOB_TYPES.keys():
             return Response(status_code=400, error_message= "BlobTypeError: invalid blob_tpype").json()
         # get blob paths
         try:

@@ -36,7 +36,7 @@ To add a new blob_type:
 3. Run db_setup.py 
 4. Navigate to the Blob Types section of src/classes.py  
 5. create a new class with attributes corresponding the the fields for the new blob_type
-6. In the Blob_types Record section of classes.py, add the blob_type to the Blob_Types dictionary with key: blob_type_name(str) and value: blob_type_class(class)  
+6. In the Blob_types Record section of classes.py, add the blob_type to the BLOB_TYPESs dictionary with key: blob_type_name(str) and value: blob_type_class(class)  
     * e.g. blob_types = {'cat_thumbnails': CatPics, 'student_essays': StudentEssays}
 7. Add the class to the blob_classes list - this is used for type hinting 
 

@@ -28,21 +28,18 @@ class Youtube(BaseModel):
     title:str 
 
 # Blob_type Record 
-Blob_Type = {'fruit':Fruit, 'chess':Chess, 'youtube':Youtube}
+BLOB_TYPES = {'fruit':Fruit, 'chess':Chess, 'youtube':Youtube}
 blob_classes = Union[Fruit, Chess, Youtube]
 
 # endpoint inputs 
 
-class BlobGetData(BaseModel):
-    pass 
-
-class BlobPostData(BaseModel):
+class BlobPostSchema(BaseModel):
     metadata:dict
     
-class BlobPutData(BaseModel):
+class BlobPutSchema(BaseModel):
     paths: list
     
-class UpdatePostData(BaseModel):
+class UpdatePostSchema(BaseModel):
     blob_type: str
     current_entry_id:int 
     update_data: dict 
