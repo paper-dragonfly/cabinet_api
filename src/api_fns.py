@@ -48,7 +48,7 @@ def generate_paths(blob_hash:str) -> list:
 
 def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
     """
-    Stores shaa256 hash for blobs alongside path to where blob is saved. The same blob may be saved in multiple places thus the same hash may appear in multiple entries pointing to different locations
+    Stores sha256 hash for blobs alongside path to where blob is saved. The same blob may be saved in multiple places thus the same hash may appear in multiple entries pointing to different locations
     """
     # is blob already in cabiney? 
     cur.execute("SELECT COUNT(1) FROM blob WHERE blob_hash = %s", (blob_hash,))
