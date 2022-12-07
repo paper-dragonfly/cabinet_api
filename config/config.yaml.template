@@ -1,0 +1,13 @@
+---
+dev_local: #local db, local app
+  conn_str: postgresql://user:password@host:postgresql_port/cabinet
+  host: localhost
+  API port: 5050
+
+testing: #local db, local app
+  conn_str: postgresql://user:password@host:postgresql_port/cabinet_test
+  host: localhost
+  API port: 5050
+
+
+  

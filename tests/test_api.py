@@ -2,12 +2,13 @@ import json
 import pdb
 import base64
 from urllib import response
+from hashlib import sha256
 
 import pytest
 
 from src.api import db_connect
 import src.api as api
-from conftest import clear_all_tables
+from tests.conftest import clear_all_tables
 
 def _test_fn(client):
     # try connecting to db
@@ -33,63 +34,43 @@ def test_store_blob(client):
     """
     GIVEN a flask API 
     WHEN a dictionary containing a blob in bytes is POSTed to /blob
-    THEN assert returns int (blob_id)
+    THEN assert returns int (blob_hash)
     """
     pass 
 
 
-# def test_drawer_update(client):
-#     """
-#     GIVEN a flask app
-#     WHEN a POST request with {'new':False} is submitted to /drawer
-#     THEN assert entry is soft-updated in db and int(update entry_id) is returned
-#     """
-#     #clear db
-#     clear_all_tables()
-#     try:
-#         # populate with original entry
-#         conn, cur = db_connect('testing')
-#         cur.execute("INSERT INTO blob VALUES(%s)",(1,))
-#         cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s)",(4,'plum','purple',1))
-#         # submit POST request
-#         response = client.post("/testtable", data=json.dumps({"new_blob":False,"metadata":{'fruit_color':'violet'}, 'old_entry_id':4}),content_type='application/json')
-#         assert response.status_code == 200 
-#         # assert 
-#     finally: 
-#         cur.close()
-#         conn.close() 
-
 class TestBlob:
-    clear_all_tables()
 
-    def test_post_blob(self, client):
+    def test_blob_post(self, client):
         """
         GIVEN a flask app
-        WHEN a POST request with table, metadata and blob_b64s (blob->str(base64)) is submitted to /blob
-        THEN assert returns int(entry_id)
+        WHEN a POST request with entry metadata is submitted to /blob
+        THEN assert metadata entry is added and API returns expected save_path
         """
-        #create blob_b64s
+        clear_all_tables()
+        #create blob_hash
         test_blob = 'a perfectly passionate poem about pineapples'
         blob_bytes = test_blob.encode('utf-8')
-        blob_base64 = base64.b64encode(blob_bytes)
-        blob_b64s = str(blob_base64)
+        b_hash = sha256(blob_bytes).hexdigest()
         # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'blob_type':'fruit', 'metadata':{'fruit_name':'pineapple','fruit_color':'yellow'}, 'blob_b64s':blob_b64s}),content_type='application/json')
+        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}}),content_type='application/json')
         # check API response is of expected type 
-        assert type(json.loads(response.data.decode("ASCII"))) == int 
+        resp = json.loads(response.data.decode("ASCII"))['body']
+        expected_path = 'blobs/'+b_hash
+        assert resp['paths'] == [expected_path]
         #check entry is in db
         try: 
             conn, cur = db_connect('testing')
             cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
             r = cur.fetchall()
             assert len(r) == 1
-            assert len(r[0]) == 4
+            assert len(r[0]) == 5
             assert 'pineapple' in r[0]
         finally:
             cur.close()
             conn.close() 
 
-    def test_get_blob(self,client):
+    def test_blob_get(self,client):
         """
         GIVEN a flask app 
         WHEN a GET request is sent to /blob containing search parameters as url query args
@@ -99,26 +80,98 @@ class TestBlob:
         try: 
             # populate_db 
             conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_id) VALUES('hash1'),('hash2'),('hash3')")
-            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('1','banana','yellow','hash1','2','apple','red','hash2', '3','strawberry','red','hash3','4','banana','green','hash1'))
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash1','f/h1'),('hash2','f/h2'),('hash3','f/h3')")
+            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s)", ('1','fruit','banana','yellow','hash1','2','fruit','apple','red','hash2', '3','fruit','strawberry','red','hash3','4','fruit','banana','green','hash1'))
             # submit GET request
             # TODO 
             r_no_args = client.get("/blob")
             r_no_type = client.get('/blob?fruit_name=banana')
-            r_no_search = client.get("/blob?blob_type=fruit")
+            r_return_all_entries_of_blobtype = client.get("/blob?blob_type=fruit")
             response1 = client.get("/blob?blob_type=fruit&entry_id=2")
             response2 = client.get('/blob?blob_type=fruit&fruit_color=red')
-            response3 = client.get("/blob?blob_type=fruit&fruit_name=banana&blob_id=hash1")
+            response3 = client.get("/blob?blob_hash=hash1&blob_type=fruit&fruit_name=banana")
             response4 = client.get("/blob?blob_type=fruit&fruit_name=banana&fruit_color=red")
-
             # check resp is as expected
-            assert json.loads(r_no_args.data.decode("ASCII"))["body"] == {'error_message':'must provide blob_type'}
-            assert json.loads(r_no_type.data.decode("ASCII"))['body'] == {'error_message':'must provide blob_type'}
-            assert json.loads(r_no_search.data.decode("ASCII"))['body'] == {'entry_id':[1,2,3,4], 'fruit_name':['banana','apple','strawberry','banana'], 'fruit_color':['yellow','red','red','green'], 'blob_id':['hash1','hash2','hash3','hash1']}
-            assert json.loads(response1.data.decode("ASCII"))['body'] == {'entry_id':[2], 'fruit_name':['apple'], 'fruit_color':['red'], 'blob_id':['hash2']}
-            assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_id':['hash2','hash3']}
-            assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_id':['hash1','hash1']}
+            assert json.loads(r_no_args.data.decode("ASCII"))["error_message"] == 'Must provide blob_type'
+            assert json.loads(r_no_type.data.decode("ASCII"))["error_message"] == 'Must provide blob_type'
+            assert json.loads(r_return_all_entries_of_blobtype.data.decode("ASCII"))['body'] == {'entry_id':[1,2,3,4], 'blob_type':['fruit','fruit','fruit','fruit'],'fruit_name':['banana','apple','strawberry','banana'], 'fruit_color':['yellow','red','red','green'], 'blob_hash':['hash1','hash2','hash3','hash1']}
+            assert json.loads(response1.data.decode("ASCII"))['body'] == {'entry_id':[2], 'blob_type':['fruit'],'fruit_name':['apple'], 'fruit_color':['red'], 'blob_hash':['hash2']}
+            assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'blob_type':['fruit','fruit'],'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_hash':['hash2','hash3']}
+            assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'blob_type':['fruit','fruit'],'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_hash':['hash1','hash1']}
             assert  json.loads(response4.data.decode("ASCII"))['body'] == None
         finally:
             cur.close()
             conn.close()
+
+    def test_blob_put(self, client):
+        """
+        GIVEN a flask app 
+        WHEN a PUT request is sent to /blob containing a list of paths to where blob is saved
+        THEN assert updates matching status value to 'saved'  
+        """
+        clear_all_tables()
+        try: 
+            # populate_db 
+            conn, cur = db_connect('testing')
+            cur.execute("INSERT INTO blob(blob_hash, blob_path, status) VALUES('hash1','f/h1', 'pending'),('hash2','f/h2','pending'),('hash3','f/h3','pending')")
+            # update and check
+            resp1 = client.put('/blob', data=json.dumps({'paths':['f/h1','f/h2']}),content_type='application/json')
+            assert json.loads(resp1.data.decode("ASCII"))['status_code'] == 200 
+            cur.execute("SELECT status FROM blob")
+            assert cur.fetchall() == [('pending',),('saved',),('saved',)]
+        finally:
+            cur.close()
+            conn.close()
+
+class TestUpdate:
+
+    def test_update(self, client):
+        clear_all_tables()
+        try:
+            # populate db with entries to update
+            conn, cur = db_connect('testing')
+            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash1','f/h1'),('hash2','f/h2'),('hash3','f/h3')")
+            cur.execute("INSERT INTO fruit(blob_type,fruit_name, fruit_color, blob_hash) VALUES(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s),(%s,%s,%s,%s)", ('fruit','banana','yellow','hash1','fruit','apple','red','hash2','fruit','strawberry','red','hash3','fruit','banana','green','hash1'))
+            cur.execute("SELECT entry_id FROM fruit WHERE fruit_name = 'apple'")
+            id = cur.fetchone()[0]
+            # submit POST request with update
+            r_valid1 = client.post('/blob/update', data=json.dumps({'blob_type':'fruit','current_entry_id':id,'update_data':{'fruit_color':'silver'}}),content_type='application/json') 
+            # invalid or abscent:  blob_type,  entry_id, feild_change for given blob_type
+            # assert returns expected 
+            decode_valid1 = json.loads(r_valid1.data.decode("ASCII"))
+            assert type(decode_valid1['body']['entry_id']) == int
+            # TODO: use select to make sure new entry is there  
+        finally:
+            cur.close()
+            conn.close()
+
+def test_get_fields(client):
+    valid_resp = client.get('/fields?blob_type=fruit')
+    invalid1_resp = client.get('/fields?invalidarg=fruit')
+    invalid2_resp = client.get('/fields?blob_type=faketype')
+    valid2_resp = client.get('/fields?blob_type=return_all_blob_types')
+    assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
+    assert json.loads(invalid1_resp.data.decode("ASCII"))["status_code"] == 400
+    assert json.loads(invalid2_resp.data.decode("ASCII"))['status_code'] == 400
+    assert json.loads(valid2_resp.data.decode('ascii'))['status_code'] == 200
+
+
+def test_retrieve(client): #TODO Need to write supporting end point and library method
+    clear_all_tables()
+    try:
+        # populate db with blob and metadata
+        conn, cur = db_connect('testing')
+        cur.execute('INSERT INTO blob VALUES(%s, %s,%s)',('hash1','f/hash1','saved'))
+        cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
+        # send request, capture resp
+        valid_resp = client.get('/blob/fruit/101')
+        assert json.loads(valid_resp.data.decode("ascii"))['status_code'] == 200
+        assert json.loads(valid_resp.data.decode("ascii"))['body'] == {'paths':['f/hash1']}
+    finally:
+        cur.close()
+        conn.close()
+
+
+def test_clean():
+    clear_all_tables()
+    return True 

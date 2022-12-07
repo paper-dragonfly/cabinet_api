@@ -1,120 +1,155 @@
-from crypt import methods
 import json 
 import os
 import pdb 
+from http import HTTPStatus
 
 from flask import Flask, request
 from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobInfo, blob_types
+from src.classes import Fruit, BlobPostSchema, BlobPutSchema, UpdatePostSchema, BLOB_TYPES, Response, RetrieveBlob, blob_classes, Fields
 
-ENV = os.getenv('ENV')
-
-## NEXT STEP: create end points and supporting fns for library upload fn
 
 def create_app(env):
     app = Flask(__name__)
 
 
-    @app.route('/home', methods=['GET'])
+    @app.route('/health', methods=['GET'])
+    def health():
+        return {"status": HTTPStatus.OK}
+
+
+    @app.route('/', methods=['GET'])
     def home():
         return 'WELCOME TO CABINET'
 
 
-    # @app.route('/blob', methods=['GET', 'POST'])
-    # #TODO: learn about bytea postgres type. 
-    # def store_blob():
-    #     if request.method == 'GET':
-    #         raise NotImplementedError
-    #     if request.method == 'POST':
-    #         blob_bytes = request.get_json()['blob_bytes']
-    #         blob_id = f.add_blob(blob_bytes) 
-    #         return json.dumps({'blob_id':blob_id})
-
-    # NOTE: each data type has its own end point with predefined columns
-    # any changes to the table must be done in source code, not by user
-
-    @app.route('/blob', methods=['GET', 'POST'])
+    @app.route('/blob', methods=['GET', 'POST', 'PUT'])
     def blob(): 
         try:
             conn, cur = db_connect(env=env)
+
             if request.method == 'GET':
                 user_search = request.args.to_dict()
                 if not 'blob_type' in user_search.keys():
-                    status_code = 400
-                    payload = {'error_message':'must provide blob_type'}
-                blob_type = user_search.pop('blob_type') 
-                valid_fields = f.validate_search_fields(blob_type,user_search)
-                if not valid_fields:
-                    status_code = 400
-                    payload = {'error_message':'Invalid blob_type or search field'}
-                # no search args beyond blob_type - return all entries for blob_type
-                elif not user_search:
+                    return Response(status_code=400,error_message='Must provide blob_type').json()
+                blob_type = user_search['blob_type']
+                if not f.validate_search_fields(user_search):
+                    return Response(status_code= 400,error_message= 'KeyError: invalid blob_type or search field').json()
+                # blob_type only - return all entries for blob_type
+                elif len(user_search) == 1:
                     matches = f.all_entries(blob_type, cur)
-                    status_code = 200
-                    payload = matches 
+                    return Response(body= matches).json()
                 else:
                     matches:dict = f.search_metadata(blob_type,user_search,cur)
-                    status_code = 200
-                    payload = matches
+                    return Response(body= matches).json()
+
             elif request.method == 'POST':
-                #extract info from POST
-                new_blob_info:BlobInfo = BlobInfo.parse_obj(request.get_json()) 
-                blob_type = new_blob_info.blob_type
-                if not blob_type in blob_types.keys():
-                    status_code = 400 
-                    payload = f'{blob_type} table does not exist'
-                blob_b64s = new_blob_info.blob_b64s
-                # turn metadata into instance of specified metadata_class to enforce type hints
-                metadata_inst = blob_types[blob_type].parse_obj(new_blob_info.metadata)
-                # add blob to db 
-                blob_id = f.add_blob(blob_b64s, cur)
-                # create dict with new_entry metadata including blob_id
-                metadata_inst.blob_id = blob_id 
-                metadata_dict = metadata_inst.dict()
-                # add metadata entry to db
-                entry_id = f.add_entry(blob_type, metadata_dict, cur)
-                status_code = 200
-                payload = {'entry_id':entry_id}
+                try:
+                    new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
+                    blob_type = new_blob_info.metadata['blob_type']
+                    if not blob_type in BLOB_TYPES.keys():
+                        return Response(status_code=400,error_message= f'{blob_type} blob_type does not exist').json()
+                    parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
+                    save_paths = f.generate_paths(parsed_metadata.blob_hash) 
+                    # add paths to blob table (id = hash, path = blobs/hash)
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, save_paths,cur)
+                    if not paths_added:
+                        return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
+                    # add metadata entry to db
+                    entry_id = f.add_entry(parsed_metadata, cur)
+                    # send file_path(s) to SDK 
+                    return Response(body={'entry_id':entry_id, 'paths':save_paths}).json()
+                except (TypeError, ValueError) as e:
+                    return Response(status_code=400, error_message= e).json()
+            
+            elif request.method == 'PUT':
+                try:
+                    put_data = BlobPutSchema.parse_obj(request.get_json())
+                    saved_paths = put_data.paths 
+                    for path in saved_paths:
+                        f.update_save_status(path, cur)
+                    return Response().json()
+                except (TypeError, ValueError) as e:
+                    return Response(status_code=400, error_message= e).json()
+                
+        except:
+            return Response(status_code=500, error_message='UnexpectedError').json
         finally:
             cur.close()
             conn.close()
-            return json.dumps({'status_code':status_code, 'body':payload})
 
-    @app.route('/testtable', methods=['GET','POST'])
-    def test_table():
+    
+    #TODO catch errors at /update how?
+    @app.route('/blob/update', methods=['POST'])
+    def update():
+        try:
+            conn, cur = db_connect(env)
+            try:
+                post_data = UpdatePostSchema.parse_obj(request.get_json())
+                validation = f.validate_update_fields(post_data.blob_type, post_data.update_data)
+                if not validation['valid']:
+                    return Response(status_code= 400,error_message= validation['error']).json()
+                current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,cur)
+                full_update_inst = BLOB_TYPES[post_data.blob_type].parse_obj(f.make_full_update_dict(post_data.update_data, current_metadata))
+                updated_entry_id = f.add_entry(full_update_inst, cur)
+                return Response(body={'entry_id': updated_entry_id}).json()
+            except (TypeError, ValueError) as e: 
+                    return Response(status_code=400, error_message= e).json()
+        except Exception as e:
+            return Response(status_code=500, error_message= e.json()).json()
+        finally:
+            cur.close()
+            conn.close()
+
+
+    @app.route('/fields',methods=['GET'])
+    def get_fields():
+        """
+        Return list of fields for specified blob_type
+        """
+        try:
+            blob_type = Fields.parse_obj(request.args.to_dict()).blob_type
+        except Exception as e: 
+            return Response(status_code=400, error_message= e.json()).json()
+        if blob_type not in BLOB_TYPES.keys() and blob_type != 'return_all_blob_types':
+            api_resp = Response(status_code = 400, error_message = 'BLOB_TYPESError: invalid blob_type', body = request.args.to_dict())
+        else:
+            blob_types_list = [blob_type]
+            if blob_type == 'return_all_blob_types':
+                blob_types_list = BLOB_TYPES.keys()
+            types_and_fields = {}
+            for t in blob_types_list:
+                bkeys = list(BLOB_TYPES[t].__fields__.keys())
+                types_and_fields[t] = bkeys
+            api_resp = Response(body= types_and_fields)
+        return api_resp.json()
+
+    
+    @app.route('/blob/<blob_type>/<id>', methods=['GET']) 
+    def retrieve(blob_type=None, id=None):
+        """
+        Retrun list of locations where blob is saved
+        """
+        # confirm submitted args are valid
+        try:
+            search_args =  RetrieveBlob(blob_type=blob_type, entry_id=id)
+            search_dict = search_args.dict()
+        except (TypeError, ValueError) as e: 
+            return Response(status_code=400, error_message= e).json()
+        if search_args.blob_type not in BLOB_TYPES.keys():
+            return Response(status_code=400, error_message= "BlobTypeError: invalid blob_tpype").json()
+        # get blob paths
         try:
             conn, cur = db_connect(env=env)
-            blob_type = 'fruit'
-            # feilds = ['entry_id','photo_id','channel','title', 'blob_id']
-            feilds = ['entry_id','fruit_name','color','blob_id']
-            if request.method == 'GET':
-                raise NotImplementedError
-            if request.method == 'POST': 
-                post_data:AllTables = AllTables.parse_obj(request.get_json()) 
-                new:bool = post_data.new_blob
-                metadata:dict = post_data.metadata
-                if new:
-                    entry_id = f.add_entry(blob_type, metadata, cur, env)
-                    return json.dumps({'status_code':200, 'entry_id':entry_id})
-                else: #update
-                    old_entry_id = post_data.old_entry_id
-                    current_metadata:dict = f.get_current_metadata(blob_type, old_entry_id)
-                    updated_metadata: dict = f.make_full_update_dict(metadata, current_metadata)
-                    entry_id = f.add_entry(blob_type, updated_metadata, cur, env)
-                    return json.dumps({'status_code':200, 'entry_id': entry_id})
+            paths = f.retrieve_paths(search_dict,cur)
+            return Response(body={'paths':paths}).json()
+        except: 
+            return Response(status_code=500, error_message='ConnectionError').json()
         finally:
             cur.close()
             conn.close()
             
-    return app 
+    return app
 
-
-if ENV != 'testing':
-    app = create_app(ENV)
-
-if __name__ == '__main__':
-    host = f.get_env_host(ENV)
-    app.run('localhost', 5050, debug=True)
