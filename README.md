@@ -18,14 +18,12 @@ Cabinet is a flexible blob-storage system that stores blobs and their associated
 6. Create empty postgreSQL database called 'cabinet' and another called 'cabinet_test' 
     * See Create Blob_types section below for instructions on populating these databases
 
-The default environment for Cabinet is dev_local. To change environment, use the command line to set environment variable ENV to the desired environment: ```export ENV='<environment>'```. This is used if you have more than one cabinet database, such as a local database, test database and remote database. 
-Note: this ENV assignment will only last for the duration of your command line session. 
-Note2: Regardless of the value of ENV, pytest will run in testing mode. No need to set ENV='testing' to run pytest. 
+The ENVIRONMENT variable in the run command determins which database your API will connect to. This is used if you have more than one cabinet database, such as a local database, test database and remote database. Configure this in the config/config.yaml file. 
+Note: pytest will allways run in 'testing' mode connecting to the cabinet_test database 
 
-Use the following CL command to run the API: ```python3 src/api.py```
 
 #### Configuration
-Create config.yaml file in the config folder which should be located in your root directory. This file will contain database connection strings and specify the host for each development environment. See config/config_template.yaml.
+Create config.yaml file in the config folder which should be located in your root directory. This file will contain database connection strings and specify the host for each environment. See config/config_template.yaml.
 
 
 ## Create Blob_types
