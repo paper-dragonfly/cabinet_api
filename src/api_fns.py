@@ -55,7 +55,8 @@ def generate_paths(new_blob_unsaved: PathsSchema) -> list:
     blob_hash = new_blob_unsaved.blob_hash
     hosts = new_blob_unsaved.save_hosts
     with open(f'config/config.yaml', 'r') as f:
-        hosts_dict = yaml.safe_load(f)['save_hosts']
+        config_dict = yaml.safe_load(f)
+    hosts_dict = config_dict['save_hosts']
     return [hosts_dict[host]+'/'+blob_type+'/'+blob_hash for host in hosts]
     
 

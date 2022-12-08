@@ -5,6 +5,7 @@ from http import HTTPStatus
 
 from flask import Flask, request
 from pydantic import ValidationError
+import yaml
 
 from src.api_fns import db_connect
 import src.api_fns as f
@@ -24,6 +25,15 @@ def create_app(env):
     @app.route('/', methods=['GET'])
     def home():
         return 'WELCOME TO CABINET'
+
+
+    @app.route('/hosts', methods=['GET'])
+    def hosts():
+        with open('config/config.yaml','r') as file:
+            config_dict = yaml.safe_load(file) 
+        hosts = list(config_dict['save_hosts'].keys())
+        return Response(body={'hosts':hosts}).json() 
+        
 
     @app.route('/paths', methods=['GET'])
     def paths():
