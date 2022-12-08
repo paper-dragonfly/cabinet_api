@@ -8,7 +8,8 @@ from collections import defaultdict
 import psycopg2
 import yaml
 
-from src.classes import BLOB_TYPES, blob_classes
+from src.constants import BLOB_TYPES, blob_classes
+from src.classes import PathsSchema
 
 
 ENV = os.getenv('ENV')
@@ -40,23 +41,33 @@ def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
     env_port = config_dict[env]['API port']
     return env_host, env_port
 
+def duplicate(blob_hash: str, cur) -> bool:
+    """ 
+    Checks if blob is already in Cabinet
+    """
+    cur.execute("SELECT COUNT(1) FROM blob WHERE blob_hash = %s", (blob_hash,))
+    if cur.fetchone()[0]:
+        return True 
+    return False
 
-def generate_paths(blob_hash:str) -> list:
-    bucket = ['blobs/']
-    return [b+blob_hash for b in bucket]
+def generate_paths(new_blob_unsaved: PathsSchema) -> list:
+    blob_type = new_blob_unsaved.blob_type
+    blob_hash = new_blob_unsaved.blob_hash
+    hosts = new_blob_unsaved.save_hosts
+    with open(f'config/config.yaml', 'r') as f:
+        hosts_dict = yaml.safe_load(f)['save_hosts']
+    return [hosts_dict[host]+'/'+blob_type+'/'+blob_hash for host in hosts]
     
 
 def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
     """
     Stores sha256 hash for blobs alongside path to where blob is saved. The same blob may be saved in multiple places thus the same hash may appear in multiple entries pointing to different locations
     """
-    # is blob already in cabiney? 
-    cur.execute("SELECT COUNT(1) FROM blob WHERE blob_hash = %s", (blob_hash,))
-    if cur.fetchone()[0]:
+    try:
+        for path in paths:
+            cur.execute('INSERT INTO blob VALUES (%s,%s)', (blob_hash,path)) 
+    except Exception:
         return False 
-    # add paths 
-    for path in paths:
-        cur.execute('INSERT INTO blob VALUES (%s,%s,%s)', (blob_hash,path,'pending')) 
     return True
 
 

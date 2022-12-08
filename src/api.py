@@ -8,7 +8,8 @@ from pydantic import ValidationError
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import Fruit, BlobPostSchema, BlobPutSchema, UpdatePostSchema, BLOB_TYPES, Response, RetrieveBlob, blob_classes, Fields
+from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, PathsSchema
+from src.constants import blob_classes, BLOB_TYPES
 
 
 def create_app(env):
@@ -24,8 +25,24 @@ def create_app(env):
     def home():
         return 'WELCOME TO CABINET'
 
+    @app.route('/paths', methods=['GET'])
+    def paths():
+        try:
+            conn, cur = db_connect(env=env)
+            new_blob_unsaved = PathsSchema(request.args.to_dict())
+            blob_type = new_blob_unsaved.blob_type
+            if not blob_type in BLOB_TYPES.keys():
+                return Response(status_code=400,error_message= f'InvalidBlobType: {blob_type} blob_type does not exist').json()
+            if f.duplicate(new_blob_unsaved.blob_hash, cur):
+                return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
+            save_paths = f.generate_paths(new_blob_unsaved)
+            return Response(body={'paths':save_paths}).json()
+        finally:
+            cur.close()
+            conn.close()
+            
 
-    @app.route('/blob', methods=['GET', 'POST', 'PUT'])
+    @app.route('/blob', methods=['GET', 'POST'])
     def blob(): 
         try:
             conn, cur = db_connect(env=env)
@@ -49,28 +66,15 @@ def create_app(env):
                 try:
                     new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
                     blob_type = new_blob_info.metadata['blob_type']
-                    if not blob_type in BLOB_TYPES.keys():
-                        return Response(status_code=400,error_message= f'{blob_type} blob_type does not exist').json()
                     parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
-                    save_paths = f.generate_paths(parsed_metadata.blob_hash) 
-                    # add paths to blob table (id = hash, path = blobs/hash)
-                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, save_paths,cur)
+                    # add paths to blob table (id = hash, path = blobs/blob_type/hash)
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths,cur)
                     if not paths_added:
-                        return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
+                        return Response(status_code=500, error_message='Error adding paths').json()
                     # add metadata entry to db
                     entry_id = f.add_entry(parsed_metadata, cur)
                     # send file_path(s) to SDK 
-                    return Response(body={'entry_id':entry_id, 'paths':save_paths}).json()
-                except (TypeError, ValueError) as e:
-                    return Response(status_code=400, error_message= e).json()
-            
-            elif request.method == 'PUT':
-                try:
-                    put_data = BlobPutSchema.parse_obj(request.get_json())
-                    saved_paths = put_data.paths 
-                    for path in saved_paths:
-                        f.update_save_status(path, cur)
-                    return Response().json()
+                    return Response(body={'entry_id':entry_id}).json()
                 except (TypeError, ValueError) as e:
                     return Response(status_code=400, error_message= e).json()
                 

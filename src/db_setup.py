@@ -37,8 +37,7 @@ def setup_db_connect(env:str, autocommit:bool=False):
 def create_blob_table(cur):
     cur.execute("""CREATE TABLE IF NOT EXISTS blob(
         blob_hash VARCHAR(64),
-        blob_path VARCHAR PRIMARY KEY,
-        status VARCHAR)""") 
+        blob_path VARCHAR PRIMARY KEY)""") 
 
 def create_new_blob_type(blob_type:str, fields:dict, cur):
     fields_str = ""

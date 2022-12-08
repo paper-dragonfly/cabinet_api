@@ -8,7 +8,7 @@ import psycopg2
 from src.api_fns import db_connect
 import src.api_fns as f
 from tests.conftest import clear_tables, clear_all_tables
-from src.classes import Fruit 
+from src.classes import Fruit, PathsSchema
 
 class TestConnections:
     # db connection fns
@@ -39,14 +39,16 @@ class TestConnections:
 class TestInsert:
     def test_generate_paths(self):
         """
-        GIVEN a sha256 hash of the blob
-        WHEN has is passed to fn
+        GIVEN a PathsSchema instance (blob_type, blob_hash, save_hosts)
+        WHEN instance is passed to fn
         ASSERT returns expected list of paths
         """
-        blob = 'Hello World'
+        blob = 'A poem about pineapples'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
-        paths = f.generate_paths(blob_hash)
-        assert paths == ['blobs/a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e']
+        hosts = ['local']
+        new_blob_unsaved = PathsSchema(blob_type='fruit', blob_hash=blob_hash, save_hosts=hosts)
+        paths = f.generate_paths(new_blob_unsaved)
+        assert paths == ['blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357']
 
     def test_add_blob_paths(self):
         clear_all_tables()

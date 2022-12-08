@@ -27,14 +27,16 @@ class Youtube(BaseModel):
     category: str
     title:str 
 
-# Blob_type Record 
-BLOB_TYPES = {'fruit':Fruit, 'chess':Chess, 'youtube':Youtube}
-blob_classes = Union[Fruit, Chess, Youtube]
-
 # endpoint inputs 
+
+class PathsSchema(BaseModel):
+    blob_type: str
+    blob_hash: str 
+    save_hosts: list 
 
 class BlobPostSchema(BaseModel):
     metadata:dict
+    paths: list
     
 class BlobPutSchema(BaseModel):
     paths: list
@@ -52,7 +54,6 @@ class RetrieveBlob(BaseModel):
     entry_id: int 
 
 # Response
-
 class Response(BaseModel):
     status_code:int = 200
     error_message:str = None
