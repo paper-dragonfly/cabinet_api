@@ -23,7 +23,11 @@ Note: pytest will allways run in 'testing' mode connecting to the cabinet_test d
 
 
 #### Configuration
-Create config.yaml file in the config folder which should be located in your root directory. This file will contain database connection strings and specify the host for each environment. See config/config_template.yaml.
+Create config.yaml file in the config folder which should be located in your root directory. This file will contain:
+1. database connection strings and host for each environment. 
+2. paths to blob storage locations 
+
+See config/config_template.yaml.
 
 
 ## Create Blob_types
@@ -31,14 +35,16 @@ Within Cabinet, entries are organized by blob_type. Each blob_type has its own m
 
 To add a new blob_type:
 1. Navigate to src/db_setup.py 
-2. In the 'DEFINE BLOB_TYPES HERE' section, create a dictionary where the key is the blob_type and the value is a sub-dict with metadata fields as keys and field_datatype as values. 
+2. In the 'DEFINE BLOB_TYPES HERE' section, create a dictionary with key: blob_type and value: sub-dict with metadata fields as keys and field_datatype as values. 
     * Note: all blob_types have fields entry_id, blob_type and blob_hash. Do not include these in your blob_type definition, they will be added automatically 
 3. Run db_setup.py 
-4. Navigate to the Blob Types section of src/classes.py  
+4. Navigate to the #Blob Types section of src/classes.py  
 5. create a new class with attributes corresponding the the fields for the new blob_type
-6. In the Blob_types Record section of classes.py, add the blob_type to the BLOB_TYPESs dictionary with key: blob_type_name(str) and value: blob_type_class(class)  
+6. Naviage to constants.py 
+6. Add new blob_type to the BLOB_TYPES dictionary with key: blob_type_name(str) and value: blob_type_class(class)  
     * e.g. blob_types = {'cat_thumbnails': CatPics, 'student_essays': StudentEssays}
 7. Add the class to the blob_classes list - this is used for type hinting 
+
 
 ## Testing
 Run ```pytest``` in the command line to execute automated testing

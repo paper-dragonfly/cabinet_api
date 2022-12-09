@@ -9,5 +9,9 @@ testing: #local db, local app
   host: localhost
   API port: 5050
 
+save_hosts:
+  local: blobs
+  google_cloud: url_to_google_cloud_bucket
+
 
   

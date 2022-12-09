@@ -57,7 +57,7 @@ def generate_paths(new_blob_unsaved: PathsSchema) -> list:
     with open(f'config/config.yaml', 'r') as f:
         config_dict = yaml.safe_load(f)
     hosts_dict = config_dict['save_hosts']
-    return [hosts_dict[host]+'/'+blob_type+'/'+blob_hash for host in hosts]
+    return [hosts_dict[host]+blob_type+'/'+blob_hash for host in hosts]
     
 
 def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
