@@ -45,10 +45,10 @@ class TestInsert:
         """
         blob = 'A poem about pineapples'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
-        hosts = ['local']
+        hosts = ['local', 'google_cloud']
         new_blob_unsaved = PathsSchema(blob_type='fruit', blob_hash=blob_hash, save_hosts=hosts)
         paths = f.generate_paths(new_blob_unsaved)
-        assert paths == ['blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357']
+        assert paths == ['blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357']
 
     def test_add_blob_paths(self):
         clear_all_tables()
