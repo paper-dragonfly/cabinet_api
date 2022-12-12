@@ -9,7 +9,7 @@ import yaml
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, PathsSchema
+from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, StorageFnSchema
 from src.constants import blob_classes, BLOB_TYPES
 
 
@@ -31,22 +31,27 @@ def create_app(env):
     def hosts():
         with open('config/config.yaml','r') as file:
             config_dict = yaml.safe_load(file) 
-        hosts = list(config_dict['save_hosts'].keys())
+        hosts = list(config_dict['storage_providers'].keys())
         return Response(body={'hosts':hosts}).json() 
-        
 
-    @app.route('/paths', methods=['GET'])
-    def paths():
+
+    @app.route('/storage_locations', methods=['GET'])
+    def storage_locations():
         try:
             conn, cur = db_connect(env=env)
-            new_blob_unsaved = PathsSchema(request.args.to_dict())
-            blob_type = new_blob_unsaved.blob_type
-            if not blob_type in BLOB_TYPES.keys():
-                return Response(status_code=400,error_message= f'InvalidBlobType: {blob_type} blob_type does not exist').json()
-            if f.duplicate(new_blob_unsaved.blob_hash, cur):
-                return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
-            save_paths = f.generate_paths(new_blob_unsaved)
-            return Response(body={'paths':save_paths}).json()
+            try: 
+                new_blob_unsaved = StorageFnSchema(request.args.to_dict())
+                blob_type = new_blob_unsaved.metadata['blob_type']
+                if not blob_type in BLOB_TYPES.keys():
+                    return Response(status_code=400,error_message= f'InvalidBlobType: {blob_type} blob_type does not exist').json()
+                # confirm metadata matches blob_type schema
+                blob_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_unsaved.metadata)
+                if f.duplicate(new_blob_unsaved.metadata['blob_hash'], cur):
+                    return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
+                save_paths = f.generate_paths(new_blob_unsaved)
+                return Response(body={'paths':save_paths}).json()
+            except (TypeError, ValueError) as e:
+                    return Response(status_code=400, error_message= e).json()
         finally:
             cur.close()
             conn.close()

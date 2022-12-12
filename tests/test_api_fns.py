@@ -39,14 +39,14 @@ class TestConnections:
 class TestInsert:
     def test_generate_paths(self):
         """
-        GIVEN a PathsSchema instance (blob_type, blob_hash, save_hosts)
+        GIVEN a PathsSchema instance (blob_type, blob_hash, storage_providers)
         WHEN instance is passed to fn
         ASSERT returns expected list of paths
         """
         blob = 'A poem about pineapples'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
         hosts = ['local', 'google_cloud']
-        new_blob_unsaved = PathsSchema(blob_type='fruit', blob_hash=blob_hash, save_hosts=hosts)
+        new_blob_unsaved = PathsSchema(blob_type='fruit', blob_hash=blob_hash, storage_providers=hosts)
         paths = f.generate_paths(new_blob_unsaved)
         assert paths == ['blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357']
 

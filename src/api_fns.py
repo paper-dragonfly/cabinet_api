@@ -9,7 +9,7 @@ import psycopg2
 import yaml
 
 from src.constants import BLOB_TYPES, blob_classes
-from src.classes import PathsSchema
+from src.classes import StorageFnSchema
 
 
 ENV = os.getenv('ENV')
@@ -50,14 +50,17 @@ def duplicate(blob_hash: str, cur) -> bool:
         return True 
     return False
 
-def generate_paths(new_blob_unsaved: PathsSchema) -> list:
-    blob_type = new_blob_unsaved.blob_type
-    blob_hash = new_blob_unsaved.blob_hash
-    hosts = new_blob_unsaved.save_hosts
+def generate_paths(new_blob_unsaved: StorageFnSchema) -> list:
+    blob_type = new_blob_unsaved.metadata['blob_type']
+    blob_hash = new_blob_unsaved.metadata['blob_hash']
+    storage_purposes: list = new_blob_unsaved.storage_providers
     with open(f'config/config.yaml', 'r') as f:
         config_dict = yaml.safe_load(f)
-    hosts_dict = config_dict['save_hosts']
-    return [hosts_dict[host]+blob_type+'/'+blob_hash for host in hosts]
+    storage_options: dict = config_dict['storage_providers'][blob_type] ## COME BACK
+    paths = []
+    for purpose in storage_purposes:
+        paths += storage_options[purpose] ### COME BACK TO CHECK
+    return paths
     
 
 def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
