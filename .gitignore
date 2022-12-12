@@ -7,3 +7,4 @@ sandbox.ipynb
 dist/*
 *.egg-info
 blobs/*
+sqlalchemy_tutorial.py 
