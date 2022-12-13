@@ -53,13 +53,15 @@ def duplicate(blob_hash: str, cur) -> bool:
 def generate_paths(new_blob_unsaved: StorageFnSchema) -> list:
     blob_type = new_blob_unsaved.metadata['blob_type']
     blob_hash = new_blob_unsaved.metadata['blob_hash']
-    storage_purposes: list = new_blob_unsaved.storage_providers
+    storage_purposes: list = new_blob_unsaved.storage_purposes #[testing,dev]
     with open(f'config/config.yaml', 'r') as f:
         config_dict = yaml.safe_load(f)
-    storage_options: dict = config_dict['storage_providers'][blob_type] ## COME BACK
-    paths = []
+    storage_options: dict = config_dict['storage_providers'][blob_type] 
+    paths = set()
     for purpose in storage_purposes:
-        paths += storage_options[purpose] ### COME BACK TO CHECK
+        for path in storage_options[purpose]:
+            path = path + "/" + blob_hash 
+            paths.add(path)
     return paths
     
 

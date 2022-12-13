@@ -8,7 +8,7 @@ import psycopg2
 from src.api_fns import db_connect
 import src.api_fns as f
 from tests.conftest import clear_tables, clear_all_tables
-from src.classes import Fruit, PathsSchema
+from src.classes import Fruit, StorageFnSchema
 
 class TestConnections:
     # db connection fns
@@ -39,16 +39,16 @@ class TestConnections:
 class TestInsert:
     def test_generate_paths(self):
         """
-        GIVEN a PathsSchema instance (blob_type, blob_hash, storage_providers)
+        GIVEN a StorageFnSchema instance (metadata, storage_providers)
         WHEN instance is passed to fn
         ASSERT returns expected list of paths
         """
         blob = 'A poem about pineapples'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
-        hosts = ['local', 'google_cloud']
-        new_blob_unsaved = PathsSchema(blob_type='fruit', blob_hash=blob_hash, storage_providers=hosts)
+        storage_purposes = ['testing', 'dev']
+        new_blob_unsaved = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':blob_hash}, storage_purposes=storage_purposes)
         paths = f.generate_paths(new_blob_unsaved)
-        assert paths == ['blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357']
+        assert paths == {'blobs/test/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357'}
 
     def test_add_blob_paths(self):
         clear_all_tables()

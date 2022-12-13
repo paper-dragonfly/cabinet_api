@@ -20,9 +20,9 @@ storage_providers:
 
     fruit:
       production:
-        - gs://cabinet22_fruit/
+        - gs://cabinet22_fruit
       testing:
-        - blobs/ 
+        - blobs/fruit 
 
   local: <path/to/blobs/> # Note: must include ending slash '/'
   google_cloud: gs://<unique_prefix> # Note: each blob type will have its own bucket. Create a unique prefix that will be used for all blob types such as "gs://myhappycabinet2022_". The URL for saved blob on google cloud will be gs://<unique_prefix><blob_type>/<blob_hash> 

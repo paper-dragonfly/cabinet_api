@@ -1,7 +1,6 @@
 from typing import Optional, Union
 
 from pydantic import BaseModel
-from constants import blob_classes
 
 # NOTE
 # 1. blob_hash default to 0 to allow for initial type-hint enforcement before blob added to db
@@ -32,7 +31,7 @@ class Youtube(BaseModel):
 
 class StorageFnSchema(BaseModel):
     metadata: dict
-    storage_providers: list 
+    storage_purposes: list 
 
 class BlobPostSchema(BaseModel):
     metadata:dict
