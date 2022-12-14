@@ -30,14 +30,18 @@ def test_home(client):
     assert response.data.decode("ASCII") == 'WELCOME TO CABINET'
     
 
-def test_hosts(client):
+def test_store_envs(client):
     """
-    GINVEN a flask app
-    WHEN a GET request is submitted to /hosts
+    GIVEN a flask app
+    WHEN a GET request is submitted to /store_envs
     THEN assert returns expected lists of hosts
     """
-    response = client.get('/hosts')
-    assert json.loads(response.data.decode("ASCII"))["body"]['hosts'] == ['local', 'google_cloud']
+    response = client.get('/store_envs?blob_type=fruit')
+    assert json.loads(response.data.decode("ASCII"))["body"]['envs'] == ['testing', 'dev']
+
+
+def test_storage_locations(client):
+    pass
 
 
 class TestBlob:
@@ -79,15 +83,14 @@ class TestBlob:
         """
         GIVEN a flask app
         WHEN a POST request with entry metadata is submitted to /blob
-        THEN assert metadata entry is added and API returns expected save_path
+        THEN assert metadata + store_locations are added to db 
         """
         clear_all_tables()
         #create blob_hash
         test_blob = 'a perfectly passionate poem about pineapples'
-        blob_bytes = test_blob.encode('utf-8')
-        b_hash = sha256(blob_bytes).hexdigest()
+        b_hash = 'hash1_pineapple'
         # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['local']}),content_type='application/json')
+        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['path/to/blob', 'gs://blob_path/hash'], 'new':True}),content_type='application/json')
         # check API response is of expected type 
         assert type(json.loads(response.data.decode("ASCII"))['body']['entry_id']) == int
         #check entry is in db
@@ -95,9 +98,23 @@ class TestBlob:
             conn, cur = db_connect('testing')
             cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
             r = cur.fetchall()
+            e_id = r[0][0]
             assert len(r) == 1
             assert len(r[0]) == 5
             assert 'pineapple' in r[0]
+            cur.execute('SELECT * FROM blob WHERE blob_hash = %s',(b_hash,)) 
+            r = cur.fetchall() 
+            assert len(r) == 2 
+
+            # adding new save location for existing blob 
+            response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['new/path/to/blob'], 'new':False}),content_type='application/json')
+            assert json.loads(response.data.decode("ASCII"))['body']['entry_id'] == e_id 
+            cur.execute('SELECT COUNT(*) FROM blob WHERE blob_hash = %s',(b_hash,))
+            path_count = cur.fetchall()[-1][-1] 
+            cur.execute('SELECT COUNT(*) FROM fruit WHERE blob_hash = %s',(b_hash,))
+            metadata_count = cur.fetchall()[-1][-1]
+            assert path_count == 3
+            assert metadata_count == 1
         finally:
             cur.close()
             conn.close() 

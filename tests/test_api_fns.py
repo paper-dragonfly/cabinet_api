@@ -2,6 +2,7 @@ import pdb
 import re
 import base64
 from hashlib import sha256
+import pytest 
 
 import psycopg2
 
@@ -45,11 +46,15 @@ class TestInsert:
         """
         blob = 'A poem about pineapples'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
-        storage_purposes = ['testing', 'dev']
-        new_blob_unsaved = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':blob_hash}, storage_purposes=storage_purposes)
+        storage_envs = ['testing', 'dev']
+        new_blob_unsaved = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':blob_hash}, storage_envs=storage_envs)
         paths = f.generate_paths(new_blob_unsaved)
         assert paths == {'blobs/test/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357'}
-
+        
+        with pytest.raises(KeyError):
+            StorageFnSchema(metadata={'blob_hash':blob_hash, 'color':'red'}, storage_envs=['testing'])
+    
+    
     def test_add_blob_paths(self):
         clear_all_tables()
         """
