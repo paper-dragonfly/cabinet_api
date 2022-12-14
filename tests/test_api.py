@@ -41,8 +41,24 @@ def test_store_envs(client):
 
 
 def test_storage_locations(client):
-    pass
-
+    """
+    GIVEN a flask app 
+    WHEN a POST request with blob metadata and storage_ens is sent to /storage_locations 
+    ASSERT returns expected paths 
+    """
+    clear_all_tables()
+    try:
+        conn,cur = db_connect('testing')
+        metadata = {'blob_type':'fruit','fruit_name':'passion','fruit_color':'purple', 'blob_hash':'phash'}
+        envs = ['testing','dev']
+        api_resp = client.post('/storage_locations', data=json.dumps({'metadata':metadata, 'storage_envs':envs}), content_type='application/json')
+        # pdb.set_trace()
+        assert json.loads(api_resp.data.decode('ascii'))['body']['new'] == True
+        assert set(json.loads(api_resp.data.decode('ascii'))['body']['paths']) == set(['blobs/test/fruit/phash','gs://cabinet22_fruit/phash', 'blobs/fruit/phash'])
+    finally:
+        cur.close()
+        conn.close()
+   
 
 class TestBlob:
 

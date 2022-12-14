@@ -49,7 +49,7 @@ def duplicate(storage_fn_inst: StorageFnSchema, cur) -> dict:
     cur.execute("SELECT blob_path FROM blob WHERE blob_hash = %s", (blob_hash,))
     resp = cur.fetchall()
     # is blob already in cabinet?
-    if not resp[0]:
+    if not resp:
         return {'duplicate': False, 'new': True} 
     # is user requesting to save in a location where blob is already saved (i.e. duplicate)? 
     saved_paths = [resp[i][0] for i in range(len(resp))]

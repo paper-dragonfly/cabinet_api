@@ -38,6 +38,29 @@ class TestConnections:
 
 
 class TestInsert:
+    def test_duplicate(self):
+        """
+        GIVEN a StorageFnSchema instance (metadata, storage_providers)
+        WHEN instance is passed to fn 
+        ASSERT determins if blob already in cabinet and if blob is duplicate
+        """
+        clear_all_tables()
+        try:
+            conn, cur = db_connect('testing') 
+            # new blob 
+            inst = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['testing'])
+            assert f.duplicate(inst, cur) == {'duplicate': False, 'new':True}
+            # duplicate
+            cur.execute('INSERT INTO blob VALUES(%s,%s)',('myhash', 'blobs/test/fruit/myhash'))
+            assert f.duplicate(inst, cur) == {'duplicate': True, 'new':False}
+            # old blob, new location 
+            inst2 = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['dev'])
+            assert f.duplicate(inst2, cur) == {'duplicate': False, 'new':False}
+        finally:
+            cur.close()
+            conn.close() 
+
+
     def test_generate_paths(self):
         """
         GIVEN a StorageFnSchema instance (metadata, storage_providers)
