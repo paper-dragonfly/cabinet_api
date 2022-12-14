@@ -61,9 +61,6 @@ class BlobPostSchema(BaseModel):
         return v 
 
     
-class BlobPutSchema(BaseModel):
-    paths: list
-    
 class UpdatePostSchema(BaseModel):
     blob_type: str
     current_entry_id:int 

@@ -8,6 +8,7 @@ from collections import defaultdict
 import psycopg2
 import yaml
 
+
 from src.constants import BLOB_TYPES, blob_classes, NEW_BLOB, NEW_LOCATION, DUPLICATE
 from src.classes import StorageFnSchema
 
