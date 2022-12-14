@@ -10,6 +10,7 @@ from src.api_fns import db_connect
 import src.api_fns as f
 from tests.conftest import clear_tables, clear_all_tables
 from src.classes import Fruit, StorageFnSchema
+from src.constants import NEW_BLOB, NEW_LOCATION, DUPLICATE
 
 class TestConnections:
     # db connection fns
@@ -38,7 +39,7 @@ class TestConnections:
 
 
 class TestInsert:
-    def test_duplicate(self):
+    def test_check_for_duplicate(self):
         """
         GIVEN a StorageFnSchema instance (metadata, storage_providers)
         WHEN instance is passed to fn 
@@ -49,13 +50,13 @@ class TestInsert:
             conn, cur = db_connect('testing') 
             # new blob 
             inst = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['testing'])
-            assert f.duplicate(inst, cur) == {'duplicate': False, 'new':True}
+            assert f.check_for_duplicate(inst, cur) == NEW_BLOB
             # duplicate
             cur.execute('INSERT INTO blob VALUES(%s,%s)',('myhash', 'blobs/test/fruit/myhash'))
-            assert f.duplicate(inst, cur) == {'duplicate': True, 'new':False}
+            assert f.check_for_duplicate(inst, cur) == DUPLICATE
             # old blob, new location 
             inst2 = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['dev'])
-            assert f.duplicate(inst2, cur) == {'duplicate': False, 'new':False}
+            assert f.check_for_duplicate(inst2, cur) == NEW_LOCATION
         finally:
             cur.close()
             conn.close() 

@@ -8,7 +8,7 @@ from collections import defaultdict
 import psycopg2
 import yaml
 
-from src.constants import BLOB_TYPES, blob_classes
+from src.constants import BLOB_TYPES, blob_classes, NEW_BLOB, NEW_LOCATION, DUPLICATE
 from src.classes import StorageFnSchema
 
 
@@ -41,7 +41,7 @@ def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
     env_port = config_dict[env]['API port']
     return env_host, env_port
 
-def duplicate(storage_fn_inst: StorageFnSchema, cur) -> dict:
+def check_for_duplicate(storage_fn_inst: StorageFnSchema, cur) -> str:
     """ 
     Checks if blob is already in Cabinet. If yes, is user trying to save to new location(s)?
     """
@@ -50,7 +50,7 @@ def duplicate(storage_fn_inst: StorageFnSchema, cur) -> dict:
     resp = cur.fetchall()
     # is blob already in cabinet?
     if not resp:
-        return {'duplicate': False, 'new': True} 
+        return NEW_BLOB
     # is user requesting to save in a location where blob is already saved (i.e. duplicate)? 
     saved_paths = [resp[i][0] for i in range(len(resp))]
     with open(f'config/config.yaml', 'r') as f:
@@ -59,9 +59,9 @@ def duplicate(storage_fn_inst: StorageFnSchema, cur) -> dict:
     for env in storage_fn_inst.storage_envs: 
         for path in storage_options[env]:
             if path+'/'+blob_hash in saved_paths:
-                return {'duplicate': True, 'new': False}
+                return DUPLICATE
     # blob in cabinet but user requesting to save to new location 
-    return {'duplicate': False, 'new': False}
+    return NEW_LOCATION
 
 def generate_paths(new_blob_unsaved: StorageFnSchema) -> set:
     blob_type = new_blob_unsaved.metadata['blob_type']

@@ -10,7 +10,7 @@ import yaml
 from src.api_fns import db_connect
 import src.api_fns as f
 from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, StorageFnSchema
-from src.constants import blob_classes, BLOB_TYPES
+from src.constants import blob_classes, BLOB_TYPES, NEW_BLOB, NEW_LOCATION, DUPLICATE
 
 
 def create_app(env):
@@ -45,11 +45,11 @@ def create_app(env):
                 # confirm metadata matches blob_type schema
                 blob_type = new_blob_unsaved.metadata['blob_type']
                 blob_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_unsaved.metadata)
-                blob_cabinet_relationship = f.duplicate(new_blob_unsaved, cur)
-                if blob_cabinet_relationship['duplicate']:
+                blob_cabinet_relationship = f.check_for_duplicate(new_blob_unsaved, cur)
+                if blob_cabinet_relationship == DUPLICATE:
                     return Response(status_code=400, error_message='BlobDuplication: blob already saved in requested location').json()
                 save_paths = f.generate_paths(new_blob_unsaved)
-                return Response(body={'paths':save_paths, 'new':blob_cabinet_relationship['new']}).json()
+                return Response(body={'paths':save_paths, 'new':blob_cabinet_relationship}).json()
             except Exception as e:
                     return Response(status_code=400, error_message= e).json()
         finally:
@@ -86,7 +86,7 @@ def create_app(env):
                     if not paths_added:
                         return Response(status_code=500, error_message='Error adding paths').json()
                     # add metadata entry to db
-                    if new_blob_info.new:
+                    if new_blob_info.new == NEW_BLOB:
                         entry_id = f.add_entry(parsed_metadata, cur)
                     else: #id most up-to-date metadata for blob
                         entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},cur)['entry_id'])

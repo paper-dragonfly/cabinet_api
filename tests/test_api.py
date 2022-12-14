@@ -9,6 +9,7 @@ import pytest
 from src.api import db_connect
 import src.api as api
 from tests.conftest import clear_all_tables
+from src.constants import NEW_LOCATION, NEW_BLOB, DUPLICATE
 
 def _test_fn(client):
     # try connecting to db
@@ -53,7 +54,7 @@ def test_storage_locations(client):
         envs = ['testing','dev']
         api_resp = client.post('/storage_locations', data=json.dumps({'metadata':metadata, 'storage_envs':envs}), content_type='application/json')
         # pdb.set_trace()
-        assert json.loads(api_resp.data.decode('ascii'))['body']['new'] == True
+        assert json.loads(api_resp.data.decode('ascii'))['body']['new'] == NEW_BLOB
         assert set(json.loads(api_resp.data.decode('ascii'))['body']['paths']) == set(['blobs/test/fruit/phash','gs://cabinet22_fruit/phash', 'blobs/fruit/phash'])
     finally:
         cur.close()
@@ -106,7 +107,7 @@ class TestBlob:
         test_blob = 'a perfectly passionate poem about pineapples'
         b_hash = 'hash1_pineapple'
         # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['path/to/blob', 'gs://blob_path/hash'], 'new':True}),content_type='application/json')
+        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['path/to/blob', 'gs://blob_path/hash'], 'new':NEW_BLOB}),content_type='application/json')
         # check API response is of expected type 
         assert type(json.loads(response.data.decode("ASCII"))['body']['entry_id']) == int
         #check entry is in db
@@ -123,7 +124,7 @@ class TestBlob:
             assert len(r) == 2 
 
             # adding new save location for existing blob 
-            response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['new/path/to/blob'], 'new':False}),content_type='application/json')
+            response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['new/path/to/blob'], 'new':NEW_LOCATION}),content_type='application/json')
             assert json.loads(response.data.decode("ASCII"))['body']['entry_id'] == e_id 
             cur.execute('SELECT COUNT(*) FROM blob WHERE blob_hash = %s',(b_hash,))
             path_count = cur.fetchall()[-1][-1] 

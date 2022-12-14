@@ -39,17 +39,17 @@ class StorageFnSchema(BaseModel):
     @validator('metadata')
     def blobtype_hash_in_metadata(cls, v):
         if 'blob_type' not in v.keys():
-            raise KeyError('metadata must include blob type') 
+            raise KeyError('metadata must include blob_type') 
         if v['blob_type'] not in BLOB_TYPES.keys():
             raise ValueError(f"InvalidBlobType: {v['blob_type']} blob_type does not exist")
         if 'blob_hash' not in v.keys():
-            raise KeyError('metadata must include blob hash')
+            raise KeyError('metadata must include blob_hash')
         return v 
 
 class BlobPostSchema(BaseModel):
     metadata:dict
     paths: list 
-    new: bool
+    new: str
 
 
     @validator('metadata')
