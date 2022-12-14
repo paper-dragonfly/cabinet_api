@@ -26,49 +26,21 @@ def test_home(client):
     WHEN a GET request is submitted to /home
     THEN assert returns expected string
     """
-    response = client.get('/home') 
+    response = client.get('/') 
     assert response.data.decode("ASCII") == 'WELCOME TO CABINET'
     
 
-def test_store_blob(client):
+def test_hosts(client):
     """
-    GIVEN a flask API 
-    WHEN a dictionary containing a blob in bytes is POSTed to /blob
-    THEN assert returns int (blob_hash)
+    GINVEN a flask app
+    WHEN a GET request is submitted to /hosts
+    THEN assert returns expected lists of hosts
     """
-    pass 
+    response = client.get('/hosts')
+    assert json.loads(response.data.decode("ASCII"))["body"]['hosts'] == ['local', 'google_cloud']
 
 
 class TestBlob:
-
-    def test_blob_post(self, client):
-        """
-        GIVEN a flask app
-        WHEN a POST request with entry metadata is submitted to /blob
-        THEN assert metadata entry is added and API returns expected save_path
-        """
-        clear_all_tables()
-        #create blob_hash
-        test_blob = 'a perfectly passionate poem about pineapples'
-        blob_bytes = test_blob.encode('utf-8')
-        b_hash = sha256(blob_bytes).hexdigest()
-        # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}}),content_type='application/json')
-        # check API response is of expected type 
-        resp = json.loads(response.data.decode("ASCII"))['body']
-        expected_path = 'blobs/'+b_hash
-        assert resp['paths'] == [expected_path]
-        #check entry is in db
-        try: 
-            conn, cur = db_connect('testing')
-            cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
-            r = cur.fetchall()
-            assert len(r) == 1
-            assert len(r[0]) == 5
-            assert 'pineapple' in r[0]
-        finally:
-            cur.close()
-            conn.close() 
 
     def test_blob_get(self,client):
         """
@@ -103,25 +75,33 @@ class TestBlob:
             cur.close()
             conn.close()
 
-    def test_blob_put(self, client):
+    def test_blob_post(self, client):
         """
-        GIVEN a flask app 
-        WHEN a PUT request is sent to /blob containing a list of paths to where blob is saved
-        THEN assert updates matching status value to 'saved'  
+        GIVEN a flask app
+        WHEN a POST request with entry metadata is submitted to /blob
+        THEN assert metadata entry is added and API returns expected save_path
         """
         clear_all_tables()
+        #create blob_hash
+        test_blob = 'a perfectly passionate poem about pineapples'
+        blob_bytes = test_blob.encode('utf-8')
+        b_hash = sha256(blob_bytes).hexdigest()
+        # POST to API: /blob endpoint, capture response
+        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['local']}),content_type='application/json')
+        # check API response is of expected type 
+        assert type(json.loads(response.data.decode("ASCII"))['body']['entry_id']) == int
+        #check entry is in db
         try: 
-            # populate_db 
             conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_hash, blob_path, status) VALUES('hash1','f/h1', 'pending'),('hash2','f/h2','pending'),('hash3','f/h3','pending')")
-            # update and check
-            resp1 = client.put('/blob', data=json.dumps({'paths':['f/h1','f/h2']}),content_type='application/json')
-            assert json.loads(resp1.data.decode("ASCII"))['status_code'] == 200 
-            cur.execute("SELECT status FROM blob")
-            assert cur.fetchall() == [('pending',),('saved',),('saved',)]
+            cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
+            r = cur.fetchall()
+            assert len(r) == 1
+            assert len(r[0]) == 5
+            assert 'pineapple' in r[0]
         finally:
             cur.close()
-            conn.close()
+            conn.close() 
+
 
 class TestUpdate:
 
