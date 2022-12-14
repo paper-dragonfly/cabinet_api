@@ -9,9 +9,31 @@ testing: #local db, local app
   host: localhost
   API port: 5050
 
-save_hosts:
-  local: blobs
-  google_cloud: url_to_google_cloud_bucket
+storage_providers:
+    blob_type:
+      purpose_1: 
+        - <path/to/location1>
+        - <path/to/location2>
+      purpose_2:
+        - <path/to/location1>
+        - <path/to/location3>
 
+    fruit:
+      production:
+        - gs://cabinet22_fruit
+      testing:
+        - blobs/fruit 
+
+  local: <path/to/blobs/> # Note: must include ending slash '/'
+  google_cloud: gs://<unique_prefix> # Note: each blob type will have its own bucket. Create a unique prefix that will be used for all blob types such as "gs://myhappycabinet2022_". The URL for saved blob on google cloud will be gs://<unique_prefix><blob_type>/<blob_hash> 
 
   
+
+- a: nsdf
+  b: sfsdf
+  c
+- f
+  d
+  g
+
+  dict(key:purpose, val:list(paths))

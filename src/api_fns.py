@@ -8,8 +8,8 @@ from collections import defaultdict
 import psycopg2
 import yaml
 
-from src.constants import BLOB_TYPES, blob_classes
-from src.classes import PathsSchema
+from src.constants import BLOB_TYPES, blob_classes, NEW_BLOB, NEW_LOCATION, DUPLICATE
+from src.classes import StorageFnSchema
 
 
 ENV = os.getenv('ENV')
@@ -41,23 +41,41 @@ def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
     env_port = config_dict[env]['API port']
     return env_host, env_port
 
-def duplicate(blob_hash: str, cur) -> bool:
+def check_for_duplicate(storage_fn_inst: StorageFnSchema, cur) -> str:
     """ 
-    Checks if blob is already in Cabinet
+    Checks if blob is already in Cabinet. If yes, is user trying to save to new location(s)?
     """
-    cur.execute("SELECT COUNT(1) FROM blob WHERE blob_hash = %s", (blob_hash,))
-    if cur.fetchone()[0]:
-        return True 
-    return False
-
-def generate_paths(new_blob_unsaved: PathsSchema) -> list:
-    blob_type = new_blob_unsaved.blob_type
-    blob_hash = new_blob_unsaved.blob_hash
-    hosts = new_blob_unsaved.save_hosts
+    blob_hash = storage_fn_inst.metadata['blob_hash']
+    cur.execute("SELECT blob_path FROM blob WHERE blob_hash = %s", (blob_hash,))
+    resp = cur.fetchall()
+    # is blob already in cabinet?
+    if not resp:
+        return NEW_BLOB
+    # is user requesting to save in a location where blob is already saved (i.e. duplicate)? 
+    saved_paths = [resp[i][0] for i in range(len(resp))]
     with open(f'config/config.yaml', 'r') as f:
         config_dict = yaml.safe_load(f)
-    hosts_dict = config_dict['save_hosts']
-    return [hosts_dict[host]+blob_type+'/'+blob_hash for host in hosts]
+    storage_options: dict = config_dict['storage_providers'][storage_fn_inst.metadata['blob_type']]
+    for env in storage_fn_inst.storage_envs: 
+        for path in storage_options[env]:
+            if path+'/'+blob_hash in saved_paths:
+                return DUPLICATE
+    # blob in cabinet but user requesting to save to new location 
+    return NEW_LOCATION
+
+def generate_paths(new_blob_unsaved: StorageFnSchema) -> set:
+    blob_type = new_blob_unsaved.metadata['blob_type']
+    blob_hash = new_blob_unsaved.metadata['blob_hash']
+    storage_envs: list = new_blob_unsaved.storage_envs 
+    with open(f'config/config.yaml', 'r') as f:
+        config_dict = yaml.safe_load(f)
+    storage_options: dict = config_dict['storage_providers'][blob_type] 
+    paths = set()
+    for env in storage_envs:
+        for path in storage_options[env]:
+            path = path + "/" + blob_hash 
+            paths.add(path)
+    return paths
     
 
 def add_blob_paths(blob_hash:str, paths:List[str], cur) -> bool:
@@ -88,11 +106,14 @@ def build_insert_query(metadata:blob_classes) -> tuple:
     return query, entry_vals
 
 
-def add_entry(metadata:blob_classes, cur)->int:
-    sql_query, entry_vals = build_insert_query(metadata)
+def add_entry(parsed_metadata_inst:blob_classes, cur)->int:
+    sql_query, entry_vals = build_insert_query(parsed_metadata_inst)
     cur.execute(sql_query, entry_vals)
     entry_id = cur.fetchone()[0] 
     return entry_id
+
+def get_entry_id(blob_type: str, blob_hash: str, cur):
+    cur.execute("SELECT entry_id FROM ")
 
 
 def update_save_status(path:str, cur):

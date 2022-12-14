@@ -9,8 +9,8 @@ import yaml
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, PathsSchema
-from src.constants import blob_classes, BLOB_TYPES
+from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, StorageFnSchema
+from src.constants import blob_classes, BLOB_TYPES, NEW_BLOB, NEW_LOCATION, DUPLICATE
 
 
 def create_app(env):
@@ -27,26 +27,31 @@ def create_app(env):
         return 'WELCOME TO CABINET'
 
 
-    @app.route('/hosts', methods=['GET'])
-    def hosts():
+    @app.route('/store_envs', methods=['GET'])
+    def store_envs():
+        blob_type = request.args.to_dict()['blob_type']
         with open('config/config.yaml','r') as file:
             config_dict = yaml.safe_load(file) 
-        hosts = list(config_dict['save_hosts'].keys())
-        return Response(body={'hosts':hosts}).json() 
-        
+        envs = list(config_dict['storage_providers'][blob_type].keys())
+        return Response(body={'envs':envs}).json() 
 
-    @app.route('/paths', methods=['GET'])
-    def paths():
+
+    @app.route('/storage_locations', methods=['POST'])
+    def storage_locations():
         try:
             conn, cur = db_connect(env=env)
-            new_blob_unsaved = PathsSchema(request.args.to_dict())
-            blob_type = new_blob_unsaved.blob_type
-            if not blob_type in BLOB_TYPES.keys():
-                return Response(status_code=400,error_message= f'InvalidBlobType: {blob_type} blob_type does not exist').json()
-            if f.duplicate(new_blob_unsaved.blob_hash, cur):
-                return Response(status_code=400, error_message='BlobDuplication: blob already in cabinet').json()
-            save_paths = f.generate_paths(new_blob_unsaved)
-            return Response(body={'paths':save_paths}).json()
+            try: 
+                new_blob_unsaved = StorageFnSchema.parse_obj(request.get_json())
+                # confirm metadata matches blob_type schema
+                blob_type = new_blob_unsaved.metadata['blob_type']
+                blob_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_unsaved.metadata)
+                blob_cabinet_relationship = f.check_for_duplicate(new_blob_unsaved, cur)
+                if blob_cabinet_relationship == DUPLICATE:
+                    return Response(status_code=400, error_message='BlobDuplication: blob already saved in requested location').json()
+                save_paths = f.generate_paths(new_blob_unsaved)
+                return Response(body={'paths':save_paths, 'new':blob_cabinet_relationship}).json()
+            except Exception as e:
+                    return Response(status_code=400, error_message= e).json()
         finally:
             cur.close()
             conn.close()
@@ -61,15 +66,14 @@ def create_app(env):
                 user_search = request.args.to_dict()
                 if not 'blob_type' in user_search.keys():
                     return Response(status_code=400,error_message='Must provide blob_type').json()
-                blob_type = user_search['blob_type']
                 if not f.validate_search_fields(user_search):
                     return Response(status_code= 400,error_message= 'KeyError: invalid blob_type or search field').json()
                 # blob_type only - return all entries for blob_type
                 elif len(user_search) == 1:
-                    matches = f.all_entries(blob_type, cur)
+                    matches = f.all_entries(user_search['blob_type'], cur)
                     return Response(body= matches).json()
                 else:
-                    matches:dict = f.search_metadata(blob_type,user_search,cur)
+                    matches:dict = f.search_metadata(user_search['blob_type'],user_search,cur)
                     return Response(body= matches).json()
 
             elif request.method == 'POST':
@@ -78,16 +82,17 @@ def create_app(env):
                     blob_type = new_blob_info.metadata['blob_type']
                     parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
                     # add paths to blob table (id = hash, path = blobs/blob_type/hash)
-                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths,cur)
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,cur)
                     if not paths_added:
                         return Response(status_code=500, error_message='Error adding paths').json()
                     # add metadata entry to db
-                    entry_id = f.add_entry(parsed_metadata, cur)
-                    # send file_path(s) to SDK 
+                    if new_blob_info.new == NEW_BLOB:
+                        entry_id = f.add_entry(parsed_metadata, cur)
+                    else: #id most up-to-date metadata for blob
+                        entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},cur)['entry_id'])
                     return Response(body={'entry_id':entry_id}).json()
-                except (TypeError, ValueError) as e:
+                except Exception as e:
                     return Response(status_code=400, error_message= e).json()
-                
         except:
             return Response(status_code=500, error_message='UnexpectedError').json
         finally:

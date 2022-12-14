@@ -9,6 +9,7 @@ import pytest
 from src.api import db_connect
 import src.api as api
 from tests.conftest import clear_all_tables
+from src.constants import NEW_LOCATION, NEW_BLOB, DUPLICATE
 
 def _test_fn(client):
     # try connecting to db
@@ -30,15 +31,35 @@ def test_home(client):
     assert response.data.decode("ASCII") == 'WELCOME TO CABINET'
     
 
-def test_hosts(client):
+def test_store_envs(client):
     """
-    GINVEN a flask app
-    WHEN a GET request is submitted to /hosts
+    GIVEN a flask app
+    WHEN a GET request is submitted to /store_envs
     THEN assert returns expected lists of hosts
     """
-    response = client.get('/hosts')
-    assert json.loads(response.data.decode("ASCII"))["body"]['hosts'] == ['local', 'google_cloud']
+    response = client.get('/store_envs?blob_type=fruit')
+    assert json.loads(response.data.decode("ASCII"))["body"]['envs'] == ['testing', 'dev']
 
+
+def test_storage_locations(client):
+    """
+    GIVEN a flask app 
+    WHEN a POST request with blob metadata and storage_ens is sent to /storage_locations 
+    ASSERT returns expected paths 
+    """
+    clear_all_tables()
+    try:
+        conn,cur = db_connect('testing')
+        metadata = {'blob_type':'fruit','fruit_name':'passion','fruit_color':'purple', 'blob_hash':'phash'}
+        envs = ['testing','dev']
+        api_resp = client.post('/storage_locations', data=json.dumps({'metadata':metadata, 'storage_envs':envs}), content_type='application/json')
+        # pdb.set_trace()
+        assert json.loads(api_resp.data.decode('ascii'))['body']['new'] == NEW_BLOB
+        assert set(json.loads(api_resp.data.decode('ascii'))['body']['paths']) == set(['blobs/test/fruit/phash','gs://cabinet22_fruit/phash', 'blobs/fruit/phash'])
+    finally:
+        cur.close()
+        conn.close()
+   
 
 class TestBlob:
 
@@ -79,15 +100,14 @@ class TestBlob:
         """
         GIVEN a flask app
         WHEN a POST request with entry metadata is submitted to /blob
-        THEN assert metadata entry is added and API returns expected save_path
+        THEN assert metadata + store_locations are added to db 
         """
         clear_all_tables()
         #create blob_hash
         test_blob = 'a perfectly passionate poem about pineapples'
-        blob_bytes = test_blob.encode('utf-8')
-        b_hash = sha256(blob_bytes).hexdigest()
+        b_hash = 'hash1_pineapple'
         # POST to API: /blob endpoint, capture response
-        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['local']}),content_type='application/json')
+        response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['path/to/blob', 'gs://blob_path/hash'], 'new':NEW_BLOB}),content_type='application/json')
         # check API response is of expected type 
         assert type(json.loads(response.data.decode("ASCII"))['body']['entry_id']) == int
         #check entry is in db
@@ -95,9 +115,23 @@ class TestBlob:
             conn, cur = db_connect('testing')
             cur.execute('SELECT * FROM fruit WHERE fruit_name=%s',('pineapple',))
             r = cur.fetchall()
+            e_id = r[0][0]
             assert len(r) == 1
             assert len(r[0]) == 5
             assert 'pineapple' in r[0]
+            cur.execute('SELECT * FROM blob WHERE blob_hash = %s',(b_hash,)) 
+            r = cur.fetchall() 
+            assert len(r) == 2 
+
+            # adding new save location for existing blob 
+            response=client.post("/blob",data=json.dumps({'metadata':{'blob_type':'fruit','fruit_name':'pineapple','fruit_color':'yellow', 'blob_hash':b_hash}, 'paths':['new/path/to/blob'], 'new':NEW_LOCATION}),content_type='application/json')
+            assert json.loads(response.data.decode("ASCII"))['body']['entry_id'] == e_id 
+            cur.execute('SELECT COUNT(*) FROM blob WHERE blob_hash = %s',(b_hash,))
+            path_count = cur.fetchall()[-1][-1] 
+            cur.execute('SELECT COUNT(*) FROM fruit WHERE blob_hash = %s',(b_hash,))
+            metadata_count = cur.fetchall()[-1][-1]
+            assert path_count == 3
+            assert metadata_count == 1
         finally:
             cur.close()
             conn.close() 

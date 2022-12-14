@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, validator
 
 # NOTE
 # 1. blob_hash default to 0 to allow for initial type-hint enforcement before blob added to db
@@ -28,15 +28,38 @@ class Youtube(BaseModel):
     title:str 
 
 # endpoint inputs 
+blob_classes = [Fruit, Chess, Youtube]
+BLOB_TYPES = {'fruit':Fruit, 'chess':Chess, 'youtube':Youtube}
 
-class PathsSchema(BaseModel):
-    blob_type: str
-    blob_hash: str 
-    save_hosts: list 
+
+class StorageFnSchema(BaseModel):
+    metadata: dict
+    storage_envs: list 
+
+    @validator('metadata')
+    def blobtype_hash_in_metadata(cls, v):
+        if 'blob_type' not in v.keys():
+            raise KeyError('metadata must include blob_type') 
+        if v['blob_type'] not in BLOB_TYPES.keys():
+            raise ValueError(f"InvalidBlobType: {v['blob_type']} blob_type does not exist")
+        if 'blob_hash' not in v.keys():
+            raise KeyError('metadata must include blob_hash')
+        return v 
 
 class BlobPostSchema(BaseModel):
     metadata:dict
-    paths: list
+    paths: list 
+    new: str
+
+
+    @validator('metadata')
+    def valid_blobtype(cls, v):
+        if 'blob_type' not in v.keys():
+            raise KeyError('metadata must include blob type') 
+        if v['blob_type'] not in BLOB_TYPES.keys():
+            raise ValueError(f"InvalidBlobType: {v['blob_type']} blob_type does not exist")
+        return v 
+
     
 class BlobPutSchema(BaseModel):
     paths: list

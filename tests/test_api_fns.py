@@ -2,13 +2,15 @@ import pdb
 import re
 import base64
 from hashlib import sha256
+import pytest 
 
 import psycopg2
 
 from src.api_fns import db_connect
 import src.api_fns as f
 from tests.conftest import clear_tables, clear_all_tables
-from src.classes import Fruit, PathsSchema
+from src.classes import Fruit, StorageFnSchema
+from src.constants import NEW_BLOB, NEW_LOCATION, DUPLICATE
 
 class TestConnections:
     # db connection fns
@@ -37,19 +39,46 @@ class TestConnections:
 
 
 class TestInsert:
+    def test_check_for_duplicate(self):
+        """
+        GIVEN a StorageFnSchema instance (metadata, storage_providers)
+        WHEN instance is passed to fn 
+        ASSERT determins if blob already in cabinet and if blob is duplicate
+        """
+        clear_all_tables()
+        try:
+            conn, cur = db_connect('testing') 
+            # new blob 
+            inst = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['testing'])
+            assert f.check_for_duplicate(inst, cur) == NEW_BLOB
+            # duplicate
+            cur.execute('INSERT INTO blob VALUES(%s,%s)',('myhash', 'blobs/test/fruit/myhash'))
+            assert f.check_for_duplicate(inst, cur) == DUPLICATE
+            # old blob, new location 
+            inst2 = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['dev'])
+            assert f.check_for_duplicate(inst2, cur) == NEW_LOCATION
+        finally:
+            cur.close()
+            conn.close() 
+
+
     def test_generate_paths(self):
         """
-        GIVEN a PathsSchema instance (blob_type, blob_hash, save_hosts)
+        GIVEN a StorageFnSchema instance (metadata, storage_providers)
         WHEN instance is passed to fn
         ASSERT returns expected list of paths
         """
         blob = 'A poem about pineapples'
         blob_hash = sha256(blob.encode('ascii')).hexdigest()
-        hosts = ['local', 'google_cloud']
-        new_blob_unsaved = PathsSchema(blob_type='fruit', blob_hash=blob_hash, save_hosts=hosts)
+        storage_envs = ['testing', 'dev']
+        new_blob_unsaved = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':blob_hash}, storage_envs=storage_envs)
         paths = f.generate_paths(new_blob_unsaved)
-        assert paths == ['blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357']
-
+        assert paths == {'blobs/test/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'blobs/fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357', 'gs://cabinet22_fruit/fc278761b5697780831b090e61405942acf974f102824e58bcf025fda3f1e357'}
+        
+        with pytest.raises(KeyError):
+            StorageFnSchema(metadata={'blob_hash':blob_hash, 'color':'red'}, storage_envs=['testing'])
+    
+    
     def test_add_blob_paths(self):
         clear_all_tables()
         """
