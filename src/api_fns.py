@@ -7,6 +7,8 @@ from collections import defaultdict
 
 import psycopg2
 import yaml
+from sqlalchemy import create_engine, Column, Integer, String, Sequence
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from src.constants import BLOB_TYPES, blob_classes, NEW_BLOB, NEW_LOCATION, DUPLICATE
 from src.classes import StorageFnSchema
