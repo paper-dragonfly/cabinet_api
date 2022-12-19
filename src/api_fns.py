@@ -9,9 +9,11 @@ import psycopg2
 import yaml
 from sqlalchemy import create_engine, Column, Integer, String, Sequence
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.sql import exists 
 
 from src.constants import BLOB_TYPES, blob_classes, NEW_BLOB, NEW_LOCATION, DUPLICATE
 from src.classes import StorageFnSchema
+from src.database import BlobTable, YoutubeTable, FruitTable, TABLE_BLOB_TYPE_MATCHING
 
 
 ENV = os.getenv('ENV')
@@ -43,18 +45,17 @@ def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
     env_port = config_dict[env]['API port']
     return env_host, env_port
 
-def check_for_duplicate(storage_fn_inst: StorageFnSchema, cur) -> str:
+def check_for_duplicate(storage_fn_inst: StorageFnSchema, session) -> str:
     """ 
     Checks if blob is already in Cabinet. If yes, is user trying to save to new location(s)?
     """
     blob_hash = storage_fn_inst.metadata['blob_hash']
-    cur.execute("SELECT blob_path FROM blob WHERE blob_hash = %s", (blob_hash,))
-    resp = cur.fetchall()
+    matching_blobs = session.query(BlobTable).filter_by(blob_hash=blob_hash).all()
     # is blob already in cabinet?
-    if not resp:
+    if not matching_blobs:
         return NEW_BLOB
     # is user requesting to save in a location where blob is already saved (i.e. duplicate)? 
-    saved_paths = [resp[i][0] for i in range(len(resp))]
+    saved_paths = [entry.blob_path for entry in matching_blobs]
     with open(f'config/config.yaml', 'r') as f:
         config_dict = yaml.safe_load(f)
     storage_options: dict = config_dict['storage_providers'][storage_fn_inst.metadata['blob_type']]
@@ -124,12 +125,6 @@ def update_save_status(path:str, cur):
 
 #__________________
 
-def all_entries(blob_type: str, cur):
-    cur.execute(f"SELECT * FROM {blob_type}")
-    matches = cur.fetchall() 
-    return build_results_dict(blob_type,matches) 
-    
-
 def validate_search_fields(user_search: dict, blob_types: dict=BLOB_TYPES)-> bool:
     #Q: have blob_types as fn arg?
     """
@@ -144,37 +139,41 @@ def validate_search_fields(user_search: dict, blob_types: dict=BLOB_TYPES)-> boo
             return False 
     return True  
 
-    
 
-def build_search_query(blob_type: str, user_search: dict) -> tuple:
-    search_conditions = ""
-    #Q. this is relying on dict being ordered so search_vals line up with user_search keys...does that matter? solution, turn dict key:vals into tuples (key,val) then make seperate search_vals tuple and loop through k:v_tuple rather than dict keys
-    search_vals = tuple(user_search.values())
-    for key in user_search:
-        search_conditions += f"{key}= %s AND "
-    search_conditions = search_conditions[0:-5]
-    query = f"SELECT * FROM {blob_type} WHERE {search_conditions}"
-    return query, search_vals 
-
-def build_results_dict(blob_type, matches:List[tuple]) -> dict:
+def build_results_dict(blob_type:str, matches:List[blob_classes]) -> dict:
     """
     create dict with blob_type metadata column names as keys and list of values from matching entries as values
     """
     results = defaultdict(list)
-    columns:list = list(BLOB_TYPES[blob_type].__fields__.keys()) 
-    for m in matches:
-        for i in range(len(m)):
-            results[columns[i]].append(m[i])    
+    for match in matches:
+        for key, val in match.__dict__.items():
+            if key in BLOB_TYPES[blob_type].__fields__.keys(): 
+                results[key].append(val)  
     return results
 
-def search_metadata(blob_type: str, user_search: dict, cur)-> dict:
-    query, search_vals = build_search_query(blob_type, user_search)
-    cur.execute(query, search_vals)
-    matches = cur.fetchall() 
-    if not matches:
-        return None
-    results_dict = build_results_dict(blob_type, matches)
+
+def all_entries(blob_type: str, session) -> dict: #**
+    matches = [match for match in session.query(TABLE_BLOB_TYPE_MATCHING[blob_type]).all()]
+    return build_results_dict(blob_type, matches) 
+
+
+def search_metadata(blob_type: str, user_search: dict, session)-> dict:
+    """
+    Get all entries matching user's serach params
+    """
+    resp = session.query(TABLE_BLOB_TYPE_MATCHING[blob_type])
+    for key,val in user_search.items():
+        resp = resp.filter_by(**{key:val})
+    results_dict = build_results_dict(blob_type, resp.all())
     return results_dict 
+        
+    # query, search_vals = build_search_query(blob_type, user_search)
+    # cur.execute(query, search_vals)
+    # matches = cur.fetchall() 
+    # if not matches:
+    #     return None
+    # results_dict = build_results_dict(blob_type, matches)
+    # return results_dict 
 
 
     

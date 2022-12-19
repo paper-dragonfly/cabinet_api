@@ -41,10 +41,10 @@ def test_store_envs(client):
     assert json.loads(response.data.decode("ASCII"))["body"]['envs'] == ['testing', 'dev']
 
 
-def test_storage_locations(client):
+def test_generate_storage_urls(client):
     """
     GIVEN a flask app 
-    WHEN a POST request with blob metadata and storage_ens is sent to /storage_locations 
+    WHEN a POST request with blob metadata and storage_ens is sent to /generate_storage_urls 
     ASSERT returns expected paths 
     """
     clear_all_tables()
@@ -52,7 +52,7 @@ def test_storage_locations(client):
         conn,cur = db_connect('testing')
         metadata = {'blob_type':'fruit','fruit_name':'passion','fruit_color':'purple', 'blob_hash':'phash'}
         envs = ['testing','dev']
-        api_resp = client.post('/storage_locations', data=json.dumps({'metadata':metadata, 'storage_envs':envs}), content_type='application/json')
+        api_resp = client.post('/generate_storage_urls', data=json.dumps({'metadata':metadata, 'storage_envs':envs}), content_type='application/json')
         # pdb.set_trace()
         assert json.loads(api_resp.data.decode('ascii'))['body']['new'] == NEW_BLOB
         assert set(json.loads(api_resp.data.decode('ascii'))['body']['paths']) == set(['blobs/test/fruit/phash','gs://cabinet22_fruit/phash', 'blobs/fruit/phash'])
