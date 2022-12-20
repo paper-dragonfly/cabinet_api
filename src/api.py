@@ -75,29 +75,28 @@ def create_app(env):
                         matches = f.all_entries(user_search['blob_type'], session)
                         return Response(body= matches).json()
                     else:
-                        matches:dict = f.search_metadata(user_search['blob_type'],user_search,cur)
+                        matches:dict = f.search_metadata(user_search['blob_type'],user_search,session)
                     return Response(body= matches).json()
                 except Exception as e:
                     return Response(status_code=500, error_message= f'UnexpectedError: {e}').json
 
             elif request.method == 'POST':
-                with session.being():
-                    try:
-                        new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
-                        blob_type = new_blob_info.metadata['blob_type']
-                        parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
-                        # add paths to blob table (id = hash, path = blobs/blob_type/hash)
-                        paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,cur)
-                        if not paths_added:
-                            return Response(status_code=500, error_message='Error adding paths').json()
-                        # add metadata entry to db
-                        if new_blob_info.new == NEW_BLOB:
-                            entry_id = f.add_entry(parsed_metadata, cur)
-                        else: #id most up-to-date metadata for blob
-                            entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},cur)['entry_id'])
-                        return Response(body={'entry_id':entry_id}).json()
-                    except Exception as e:
-                        return Response(status_code=400, error_message= e).json()
+                try:
+                    new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
+                    blob_type = new_blob_info.metadata['blob_type']
+                    parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
+                    # add paths to blob table (id = hash, path = blobs/blob_type/hash)
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,cur)
+                    if not paths_added:
+                        return Response(status_code=500, error_message='Error adding paths').json()
+                    # add metadata entry to db
+                    if new_blob_info.new == NEW_BLOB:
+                        entry_id = f.add_entry(parsed_metadata, cur)
+                    else: #id most up-to-date metadata for blob
+                        entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},session)['entry_id'])
+                    return Response(body={'entry_id':entry_id}).json()
+                except Exception as e:
+                    return Response(status_code=400, error_message= e).json()
 
     
     #TODO catch errors at /update how?
@@ -158,7 +157,7 @@ def create_app(env):
         except (TypeError, ValueError) as e: 
             return Response(status_code=400, error_message= e).json()
         if search_args.blob_type not in BLOB_TYPES.keys():
-            return Response(status_code=400, error_message= "BlobTypeError: invalid blob_tpype").json()
+            return Response(status_code=400, error_message= "BlobTypeError: invalid blob_type").json()
         # get blob paths
         try:
             conn, cur = db_connect(env=env)

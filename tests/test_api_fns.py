@@ -48,7 +48,7 @@ class TestInsert:
         WHEN instance is passed to fn 
         ASSERT determins if blob already in cabinet and if blob is duplicate
         """
-        clear_all_tables(session)
+        clear_all_tables()
         # new blob 
         inst = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['testing'])
         assert f.check_for_duplicate(inst, session) == NEW_BLOB
@@ -138,23 +138,6 @@ class TestInsert:
             cur.close()
             conn.close()
 
-    def test_update_save_status(self):
-        clear_all_tables()
-        #open connection and populate blob table
-        try: 
-            conn, cur = f.db_connect('testing') 
-            cur.execute("INSERT INTO blob(blob_hash, blob_path, status) VALUES('test_blob_hash','folder/test_blob_hash', 'pending') ON CONFLICT DO NOTHING")
-            # update
-            resp = f.update_save_status('folder/test_blob_hash', cur)
-            assert resp == True 
-            cur.execute("SELECT status FROM blob WHERE blob_path = %s",('folder/test_blob_hash',))
-            assert cur.fetchone()[0] == 'saved'
-        finally:
-            # clear table, close connections
-            cur.execute("DELETE FROM fruit")
-            cur.execute("DELETE FROM blob")
-            cur.close()
-            conn.close()
 
 class TestSearch():
     clear_all_tables()
@@ -168,10 +151,6 @@ class TestSearch():
         assert f.validate_search_fields(self.valid1,self.BLOB_TYPES) == True
         assert f.validate_search_fields(self.invalidtype,self.BLOB_TYPES)==False
         assert f.validate_search_fields(self.invalidkey,self.BLOB_TYPES) == False
-
-    
-    # def test_build_search_query(self):
-    #     assert f.build_search_query('fruit',self.valid1) == ("SELECT * FROM fruit WHERE blob_type= %s AND fruit_name= %s",('fruit','mango'))
 
 
     def test_build_results_dict(self):
@@ -187,9 +166,9 @@ class TestSearch():
         # add entries to db
         mango = FruitTable(entry_id=22, blob_type = 'fruit', fruit_name='mango', fruit_color='orange',blob_hash = 'mangohash')
         kiwi = FruitTable(entry_id = 23, blob_type = 'fruit', fruit_name='kiwi', fruit_color='green',blob_hash = 'kiwihash')
-        with session.begin():
-            session.add(mango)
-            session.add(kiwi)
+        session.add(mango)
+        session.add(kiwi)
+        session.commit()
         # use all_entries to retrieve matches 
         resp = f.all_entries('fruit', session)
         # assert returns expected
@@ -201,9 +180,9 @@ class TestSearch():
         # populate db
         mango = FruitTable(entry_id=22, blob_type = 'fruit', fruit_name='mango', fruit_color='orange',blob_hash = 'mangohash')
         kiwi = FruitTable(entry_id = 23, blob_type = 'fruit', fruit_name='kiwi', fruit_color='green',blob_hash = 'kiwihash')
-        with session.begin():
-            session.add(mango)
-            session.add(kiwi)
+        session.add(mango)
+        session.add(kiwi)
+        session.commit()
         # assert expected
         assert f.search_metadata('fruit', self.valid1, session) == {'entry_id':[22], 'blob_type':['fruit'],'fruit_name':['mango'], 'fruit_color':['orange'], 'blob_hash':['mangohash']}
         assert f.search_metadata('fruit', {'blob_type':'fruit'}, session) == {'entry_id':[22,23], 'blob_type':['fruit','fruit'],'fruit_name':['mango','kiwi'], 'fruit_color':['orange','green'], 'blob_hash':['mangohash','kiwihash']} 

@@ -91,7 +91,7 @@ class TestBlob:
             assert json.loads(response1.data.decode("ASCII"))['body'] == {'entry_id':[2], 'blob_type':['fruit'],'fruit_name':['apple'], 'fruit_color':['red'], 'blob_hash':['hash2']}
             assert  json.loads(response2.data.decode("ASCII"))['body'] == {'entry_id':[2,3], 'blob_type':['fruit','fruit'],'fruit_name':['apple','strawberry'], 'fruit_color':['red','red'], 'blob_hash':['hash2','hash3']}
             assert  json.loads(response3.data.decode("ASCII"))['body'] == {'entry_id':[1,4], 'blob_type':['fruit','fruit'],'fruit_name':['banana','banana'], 'fruit_color':['yellow','green'], 'blob_hash':['hash1','hash1']}
-            assert  json.loads(response4.data.decode("ASCII"))['body'] == None
+            assert  json.loads(response4.data.decode("ASCII"))['body'] == {}
         finally:
             cur.close()
             conn.close()

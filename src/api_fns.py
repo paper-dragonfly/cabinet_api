@@ -38,12 +38,6 @@ def db_connect(env:str=ENV, autocommit:bool=True) ->tuple:
     conn.autocommit = autocommit
     return conn, cur 
 
-def get_env_info(env:str=ENV, config_file:str='config/config.yaml')->str:
-    with open(f'{config_file}', 'r') as f:
-        config_dict = yaml.safe_load(f)
-    env_host = config_dict[env]['host']
-    env_port = config_dict[env]['API port']
-    return env_host, env_port
 
 def check_for_duplicate(storage_fn_inst: StorageFnSchema, session) -> str:
     """ 
@@ -115,14 +109,6 @@ def add_entry(parsed_metadata_inst:blob_classes, cur)->int:
     entry_id = cur.fetchone()[0] 
     return entry_id
 
-def get_entry_id(blob_type: str, blob_hash: str, cur):
-    cur.execute("SELECT entry_id FROM ")
-
-
-def update_save_status(path:str, cur):
-    cur.execute('UPDATE blob SET status = %s WHERE blob_path = %s',('saved', path))
-    return True 
-
 #__________________
 
 def validate_search_fields(user_search: dict, blob_types: dict=BLOB_TYPES)-> bool:
@@ -152,7 +138,7 @@ def build_results_dict(blob_type:str, matches:List[blob_classes]) -> dict:
     return results
 
 
-def all_entries(blob_type: str, session) -> dict: #**
+def all_entries(blob_type: str, session) -> dict: 
     matches = [match for match in session.query(TABLE_BLOB_TYPE_MATCHING[blob_type]).all()]
     return build_results_dict(blob_type, matches) 
 
@@ -166,16 +152,6 @@ def search_metadata(blob_type: str, user_search: dict, session)-> dict:
         resp = resp.filter_by(**{key:val})
     results_dict = build_results_dict(blob_type, resp.all())
     return results_dict 
-        
-    # query, search_vals = build_search_query(blob_type, user_search)
-    # cur.execute(query, search_vals)
-    # matches = cur.fetchall() 
-    # if not matches:
-    #     return None
-    # results_dict = build_results_dict(blob_type, matches)
-    # return results_dict 
-
-
     
 
 # _______/update________ 
