@@ -175,7 +175,7 @@ def test_retrieve(client): #TODO Need to write supporting end point and library 
     try:
         # populate db with blob and metadata
         conn, cur = db_connect('testing')
-        cur.execute('INSERT INTO blob VALUES(%s, %s,%s)',('hash1','f/hash1','saved'))
+        cur.execute('INSERT INTO blob VALUES(%s, %s)',('hash1','f/hash1'))
         cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
         # send request, capture resp
         valid_resp = client.get('/blob/fruit/101')

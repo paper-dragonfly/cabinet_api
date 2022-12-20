@@ -25,6 +25,7 @@ class FruitTable(Base):
     fruit_color = Column(String)
     blob_hash = Column(String)
 
+
     def _repr_(self): #returns info in nice formatting
         return "<Fruit(entry_id = '%s', blob_type='%s', fruit_name='%s', fruit_color='%s', blob_hash='%s')>" % (
             self.entry_id,

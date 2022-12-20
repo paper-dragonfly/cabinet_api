@@ -86,12 +86,12 @@ def create_app(env):
                     blob_type = new_blob_info.metadata['blob_type']
                     parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
                     # add paths to blob table (id = hash, path = blobs/blob_type/hash)
-                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,cur)
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,session)
                     if not paths_added:
                         return Response(status_code=500, error_message='Error adding paths').json()
                     # add metadata entry to db
                     if new_blob_info.new == NEW_BLOB:
-                        entry_id = f.add_entry(parsed_metadata, cur)
+                        entry_id = f.add_entry(parsed_metadata, session)
                     else: #id most up-to-date metadata for blob
                         entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},session)['entry_id'])
                     return Response(body={'entry_id':entry_id}).json()
@@ -102,24 +102,19 @@ def create_app(env):
     #TODO catch errors at /update how?
     @app.route('/blob/update', methods=['POST'])
     def update():
-        try:
-            conn, cur = db_connect(env)
+        with Session() as session:
             try:
                 post_data = UpdatePostSchema.parse_obj(request.get_json())
                 validation = f.validate_update_fields(post_data.blob_type, post_data.update_data)
                 if not validation['valid']:
                     return Response(status_code= 400,error_message= validation['error']).json()
-                current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,cur)
+                current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,session)
                 full_update_inst = BLOB_TYPES[post_data.blob_type].parse_obj(f.make_full_update_dict(post_data.update_data, current_metadata))
-                updated_entry_id = f.add_entry(full_update_inst, cur)
+                updated_entry_id = f.add_entry(full_update_inst, session)
                 return Response(body={'entry_id': updated_entry_id}).json()
             except (TypeError, ValueError) as e: 
                     return Response(status_code=400, error_message= e).json()
-        except Exception as e:
-            return Response(status_code=500, error_message= e.json()).json()
-        finally:
-            cur.close()
-            conn.close()
+        
 
 
     @app.route('/fields',methods=['GET'])
@@ -159,15 +154,9 @@ def create_app(env):
         if search_args.blob_type not in BLOB_TYPES.keys():
             return Response(status_code=400, error_message= "BlobTypeError: invalid blob_type").json()
         # get blob paths
-        try:
-            conn, cur = db_connect(env=env)
-            paths = f.retrieve_paths(search_dict,cur)
+        with Session() as session:
+            paths = f.retrieve_paths(search_dict,session)
             return Response(body={'paths':paths}).json()
-        except: 
-            return Response(status_code=500, error_message='ConnectionError').json()
-        finally:
-            cur.close()
-            conn.close()
             
     return app
 
