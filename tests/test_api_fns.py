@@ -122,6 +122,11 @@ class TestSearch():
     invalidkey = {'blob_type':'fruit','fruit_age':'two'}
 
     def test_validate_search_fields(self):
+        """
+        GIVEN fn
+        WHEN user submits blob_type and dict of metadata search params 
+        THEN assert returns expected bool depending on whether or not dict keys match blob_type fields
+        """
         assert f.validate_search_fields({'blob_type':'fruit'}, self.BLOB_TYPES) == True
         assert f.validate_search_fields(self.valid1,self.BLOB_TYPES) == True
         assert f.validate_search_fields(self.invalidtype,self.BLOB_TYPES)==False
