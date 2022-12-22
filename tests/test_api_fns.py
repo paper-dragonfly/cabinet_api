@@ -8,7 +8,7 @@ import psycopg2
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from tests.conftest import clear_tables, clear_all_tables, Session
+from tests.conftest import clear_all_tables, Session
 from src.classes import Fruit, StorageFnSchema
 from src.constants import NEW_BLOB, NEW_LOCATION, DUPLICATE
 from src.database import BlobTable, FruitTable

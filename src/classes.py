@@ -1,6 +1,6 @@
-from typing import Optional, Union
+from typing import Optional
 
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, validator
 
 # NOTE
 # 1. blob_hash default to 0 to allow for initial type-hint enforcement before blob added to db

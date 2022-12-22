@@ -18,15 +18,6 @@ def client(): #sends the HTTP requests
     return app.test_client() 
     
 
-def clear_tables(tables:list):
-    try: 
-        conn,cur = db_connect('testing')
-        for table in tables:
-            cur.execute(f'DELETE FROM {table}')
-    finally:
-        cur.close()
-        conn.close()
-
 def clear_all_tables():
     with Session() as session:
         for table in TABLE_BLOB_TYPE_MATCHING.values():

@@ -5,15 +5,11 @@ from hashlib import sha256
 from typing import List
 from collections import defaultdict
 
-import psycopg2
 import yaml
-from sqlalchemy import create_engine, Column, Integer, String, Sequence
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.sql import exists 
 
 from src.constants import BLOB_TYPES, blob_classes, NEW_BLOB, NEW_LOCATION, DUPLICATE
 from src.classes import StorageFnSchema
-from src.database import BlobTable, YoutubeTable, FruitTable, TABLE_BLOB_TYPE_MATCHING
+from src.database import BlobTable, TABLE_BLOB_TYPE_MATCHING
 
 
 ENV = os.getenv('ENV')
@@ -27,16 +23,6 @@ def get_conn_str(env: str=ENV, config_file: str='config/config.yaml') -> str:
         config_dict = yaml.safe_load(f)
     conn_str = config_dict[env]['conn_str']
     return conn_str
-
-def db_connect(env:str=ENV, autocommit:bool=True) ->tuple:
-    """
-    Connect to postgreSQL db, return a connection and cursor object
-    """
-    conn_str = get_conn_str(env)
-    conn = psycopg2.connect(conn_str)
-    cur = conn.cursor()
-    conn.autocommit = autocommit
-    return conn, cur 
 
 
 def check_for_duplicate(storage_fn_inst: StorageFnSchema, session) -> str:
@@ -59,6 +45,7 @@ def check_for_duplicate(storage_fn_inst: StorageFnSchema, session) -> str:
                 return DUPLICATE
     # blob in cabinet but user requesting to save to new location 
     return NEW_LOCATION
+
 
 def generate_paths(new_blob_unsaved: StorageFnSchema) -> set:
     blob_type = new_blob_unsaved.metadata['blob_type']
@@ -100,7 +87,6 @@ def add_entry(parsed_metadata_inst:blob_classes, session)->int:
 #__________________
 
 def validate_search_fields(user_search: dict)-> bool:
-    #Q: have blob_types as fn arg?
     """
     Confirm blob_type is valid and that all search parameters are attributes of specified blob_type
     """
@@ -185,11 +171,6 @@ def retrieve_paths(search_args: dict, session) -> str:
     table = TABLE_BLOB_TYPE_MATCHING[search_args['blob_type']]
     blob_hash = session.query(table.blob_hash).filter_by(entry_id = search_args['entry_id']).first()[0]
     matches = session.query(BlobTable.blob_path).filter_by(blob_hash=blob_hash)
-
-    # cur.execute(f"SELECT blob_hash FROM {search_args['blob_type']} WHERE entry_id = %s",(search_args['entry_id'],))
-    # blob_hash = cur.fetchone()[0] 
-    # cur.execute('SELECT blob_path From blob WHERE blob_hash=%s',(blob_hash,)) 
-    # matches = cur.fetchall() #[(p1,),(p2,)]
     paths = []
     for match in matches:
         paths.append(match[0])
