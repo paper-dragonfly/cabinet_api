@@ -17,6 +17,9 @@ class BlobTable(Base):
             )
 
 class FruitTable(Base):
+    """
+    Demo blob_type 
+    """
     __tablename__ = 'fruit'
 
     entry_id = Column(Integer, Sequence("fruit_entry_id_seq"), primary_key = True)
@@ -37,6 +40,9 @@ class FruitTable(Base):
 
 
 class YoutubeTable(Base):
+    """
+    Demo blob_type 
+    """
     __tablename__ = 'youtube'
 
     entry_id = Column(Integer, Sequence("youtube_entry_id_seq"), primary_key = True)

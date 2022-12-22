@@ -26,19 +26,19 @@ class TestConnections:
         assert len(re.findall('cabinet_test$', f.get_conn_str('testing'))) == 1
         assert len(re.findall('cabinet$', f.get_conn_str('dev_local'))) == 1
 
-    def test_db_connect(self):
-        """
-        GIVEN the db_connect fn
-        WHEN a dev env is passed to fn
-        THEN assert a connection and cursor are returned
-        """
-        try: 
-            conn, cur = f.db_connect('testing')
-            assert type(conn) == psycopg2.extensions.connection
-            assert type(cur) == psycopg2.extensions.cursor
-        finally:
-            conn.close()
-            cur.close()
+    # def test_db_connect(self):
+    #     """
+    #     GIVEN the db_connect fn
+    #     WHEN a dev env is passed to fn
+    #     THEN assert a connection and cursor are returned
+    #     """
+    #     try: 
+    #         conn, cur = f.db_connect('testing')
+    #         assert type(conn) == psycopg2.extensions.connection
+    #         assert type(cur) == psycopg2.extensions.cursor
+    #     finally:
+    #         conn.close()
+    #         cur.close()
 
 
 class TestInsert:
@@ -127,10 +127,10 @@ class TestSearch():
         WHEN user submits blob_type and dict of metadata search params 
         THEN assert returns expected bool depending on whether or not dict keys match blob_type fields
         """
-        assert f.validate_search_fields({'blob_type':'fruit'}, self.BLOB_TYPES) == True
-        assert f.validate_search_fields(self.valid1,self.BLOB_TYPES) == True
-        assert f.validate_search_fields(self.invalidtype,self.BLOB_TYPES)==False
-        assert f.validate_search_fields(self.invalidkey,self.BLOB_TYPES) == False
+        assert f.validate_search_fields({'blob_type':'fruit'}) == True
+        assert f.validate_search_fields(self.valid1) == True
+        assert f.validate_search_fields(self.invalidtype)==False
+        assert f.validate_search_fields(self.invalidkey) == False
 
 
     def test_build_results_dict(self):
