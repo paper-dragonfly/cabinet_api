@@ -8,9 +8,12 @@ import psycopg2
 
 from src.api_fns import db_connect
 import src.api_fns as f
-from tests.conftest import clear_tables, clear_all_tables
+from tests.conftest import clear_all_tables, Session
 from src.classes import Fruit, StorageFnSchema
 from src.constants import NEW_BLOB, NEW_LOCATION, DUPLICATE
+from src.database import BlobTable, FruitTable
+
+# session = Session()
 
 class TestConnections:
     # db connection fns
@@ -23,19 +26,19 @@ class TestConnections:
         assert len(re.findall('cabinet_test$', f.get_conn_str('testing'))) == 1
         assert len(re.findall('cabinet$', f.get_conn_str('dev_local'))) == 1
 
-    def test_db_connect(self):
-        """
-        GIVEN the db_connect fn
-        WHEN a dev env is passed to fn
-        THEN assert a connection and cursor are returned
-        """
-        try: 
-            conn, cur = f.db_connect('testing')
-            assert type(conn) == psycopg2.extensions.connection
-            assert type(cur) == psycopg2.extensions.cursor
-        finally:
-            conn.close()
-            cur.close()
+    # def test_db_connect(self):
+    #     """
+    #     GIVEN the db_connect fn
+    #     WHEN a dev env is passed to fn
+    #     THEN assert a connection and cursor are returned
+    #     """
+    #     try: 
+    #         conn, cur = f.db_connect('testing')
+    #         assert type(conn) == psycopg2.extensions.connection
+    #         assert type(cur) == psycopg2.extensions.cursor
+    #     finally:
+    #         conn.close()
+    #         cur.close()
 
 
 class TestInsert:
@@ -46,21 +49,19 @@ class TestInsert:
         ASSERT determins if blob already in cabinet and if blob is duplicate
         """
         clear_all_tables()
-        try:
-            conn, cur = db_connect('testing') 
+        with Session() as session:
             # new blob 
             inst = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['testing'])
-            assert f.check_for_duplicate(inst, cur) == NEW_BLOB
+            assert f.check_for_duplicate(inst, session) == NEW_BLOB
             # duplicate
-            cur.execute('INSERT INTO blob VALUES(%s,%s)',('myhash', 'blobs/test/fruit/myhash'))
-            assert f.check_for_duplicate(inst, cur) == DUPLICATE
+            d_blob = BlobTable(blob_hash='myhash', blob_path = 'blobs/test/fruit/myhash')
+            session.add(d_blob) 
+            session.commit()
+            assert f.check_for_duplicate(inst, session) == DUPLICATE
             # old blob, new location 
             inst2 = StorageFnSchema(metadata={'blob_type':'fruit', 'blob_hash':'myhash'}, storage_envs=['dev'])
-            assert f.check_for_duplicate(inst2, cur) == NEW_LOCATION
-        finally:
-            cur.close()
-            conn.close() 
-
+            assert f.check_for_duplicate(inst2, session) == NEW_LOCATION        
+            
 
     def test_generate_paths(self):
         """
@@ -82,111 +83,96 @@ class TestInsert:
     def test_add_blob_paths(self):
         clear_all_tables()
         """
-        GIVEN a postgres db, the add_blob fn and a blob encoded as a base_64_bytes_str
-        WHEN blob is passed to add_blob fn
-        THEN assert an integer of length 64 is returned (sha256 Hash)
+        GIVEN a postgres db, a blob_hash and a list of save_paths
+        WHEN blob_hash and save_paths are passed to add_blob_paths fn
+        THEN assert returns True
         """
+        clear_all_tables()
         #declare test blob_hash
         blob_hash = 'a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e'
         paths = ['cabinet_api/blobs/a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e']
         # pass to fn
-        try:
-            conn, cur = f.db_connect('testing')
-            resp = f.add_blob_paths(blob_hash,paths,cur)
+        with Session() as session: 
+            resp = f.add_blob_paths(blob_hash,paths,session)
             assert resp == True
-            resp = f.add_blob_paths(blob_hash, paths, cur)
+            resp = f.add_blob_paths(blob_hash, paths, session)
             assert resp == False 
-        finally:
-            cur.close()
-            conn.close()
-            clear_tables(['blob'])
-
-
-    def test_build_insert_query(self):
-        """"
-        GIVEN a dictionary of metadata 
-        WHEN dict is passed to fn
-        THEN assert expected tuple(sql_query:str, values:tuple) is returned
-        """
-        metadata = Fruit(entry_id=55, blob_type='fruit', fruit_name='apple', fruit_color='gold',blob_hash='hash')
-        returned = f.build_insert_query(metadata)
-        expected = (f'INSERT INTO fruit(blob_type, fruit_name, fruit_color, blob_hash) VALUES(%s,%s,%s,%s) RETURNING entry_id',('fruit', 'apple','gold','hash'))
-        assert returned == expected 
 
 
     def test_add_entry(self):
         """
-        GIVEN a postgres db and metadata dict (for a stored blob?)
-        WHEN dict is passed to add_entry along with the metadata type (blob_type)
+        GIVEN a postgres db and a metadata_pydantic_inst
+        WHEN inst is passed to add_entry 
         THEN assert an int is returned - this should be the entry_id
         """
-        try:
-            #open connection and populate blob table
-            conn, cur = f.db_connect('testing') 
-            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('test_blob_hash','folder/test_blob_hash') ON CONFLICT DO NOTHING")
-            #pass metadata to fn 
-            metadata = {'entry_id':None,'fruit_name': 'strawberry', 'fruit_color': 'red', 'blob_hash':'test_blob_hash'}
-            metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_hash='test_blob_hash')
-            returned_entry_id = f.add_entry(metadata, cur) 
-            assert type(returned_entry_id) == int
-        finally:
-            # clear table, close connections
-            cur.execute("DELETE FROM fruit")
-            cur.execute("DELETE FROM blob")
-            cur.close()
-            conn.close()
-
-    def test_update_save_status(self):
         clear_all_tables()
-        #open connection and populate blob table
-        try: 
-            conn, cur = f.db_connect('testing') 
-            cur.execute("INSERT INTO blob(blob_hash, blob_path, status) VALUES('test_blob_hash','folder/test_blob_hash', 'pending') ON CONFLICT DO NOTHING")
-            # update
-            resp = f.update_save_status('folder/test_blob_hash', cur)
-            assert resp == True 
-            cur.execute("SELECT status FROM blob WHERE blob_path = %s",('folder/test_blob_hash',))
-            assert cur.fetchone()[0] == 'saved'
-        finally:
-            # clear table, close connections
-            cur.execute("DELETE FROM fruit")
-            cur.execute("DELETE FROM blob")
-            cur.close()
-            conn.close()
+        #pass metadata to fn 
+        metadata = Fruit(entry_id=None, blob_type='fruit', fruit_name= 'strawberry', fruit_color='red', blob_hash='test_blob_hash')
+        with Session() as session:
+            returned_entry_id = f.add_entry(metadata, session) 
+            assert type(returned_entry_id) == int
+        
+
 
 class TestSearch():
     clear_all_tables()
     BLOB_TYPES = {'fruit':Fruit}
-    valid1 = {'blob_type':'fruit','fruit_name':'banana'}
+    valid1 = {'blob_type':'fruit','fruit_name':'mango'}
     invalidtype = {'blob_type':'house','fruit_name':'banana'}
     invalidkey = {'blob_type':'fruit','fruit_age':'two'}
 
     def test_validate_search_fields(self):
-        assert f.validate_search_fields({'blob_type':'fruit'}, self.BLOB_TYPES) == True
-        assert f.validate_search_fields(self.valid1,self.BLOB_TYPES) == True
-        assert f.validate_search_fields(self.invalidtype,self.BLOB_TYPES)==False
-        assert f.validate_search_fields(self.invalidkey,self.BLOB_TYPES) == False
-
-    
-    def test_build_search_query(self):
-        assert f.build_search_query('fruit',self.valid1) == ("SELECT * FROM fruit WHERE blob_type= %s AND fruit_name= %s",('fruit','banana'))
+        """
+        GIVEN fn
+        WHEN user submits blob_type and dict of metadata search params 
+        THEN assert returns expected bool depending on whether or not dict keys match blob_type fields
+        """
+        assert f.validate_search_fields({'blob_type':'fruit'}) == True
+        assert f.validate_search_fields(self.valid1) == True
+        assert f.validate_search_fields(self.invalidtype)==False
+        assert f.validate_search_fields(self.invalidkey) == False
 
 
     def test_build_results_dict(self):
-        matches = [('1','fruit','plum','red','phash'),('2','fruit','plum','green','phash')]
-        assert f.build_results_dict('fruit',matches) == {'entry_id':['1','2'], 'blob_type':['fruit','fruit'],'fruit_name':['plum','plum'], 'fruit_color':['red','green'], 'blob_hash':['phash','phash']}
+        mango = FruitTable(entry_id=22, blob_type = 'fruit', fruit_name='mango', fruit_color='orange',blob_hash = 'mangohash')
+        kiwi = FruitTable(entry_id = 23, blob_type = 'fruit', fruit_name='kiwi', fruit_color='green',blob_hash = 'kiwihash')
+        matches = [mango, kiwi]
+        resp = f.build_results_dict('fruit', matches) 
+        assert resp == {'entry_id':[22,23], 'blob_type':['fruit','fruit'],'fruit_name':['mango','kiwi'], 'fruit_color':['orange','green'], 'blob_hash':['mangohash','kiwihash']}
+       
+
+    def test_all_entries(self):
+        clear_all_tables()
+        # add entries to db
+        mango = FruitTable(entry_id=22, blob_type = 'fruit', fruit_name='mango', fruit_color='orange',blob_hash = 'mangohash')
+        kiwi = FruitTable(entry_id = 23, blob_type = 'fruit', fruit_name='kiwi', fruit_color='green',blob_hash = 'kiwihash')
+        with Session() as session:
+            session.add(mango)
+            session.add(kiwi)
+            session.commit()
+
+        ##COME BACK - WHY DOESN'T SESSION CLOSE AFTER WITH BLOCK???? 
+
+        # use all_entries to retrieve matches 
+        resp = f.all_entries('fruit', session)
+        # assert returns expected
+        assert resp == {'entry_id':[22,23], 'blob_type':['fruit','fruit'],'fruit_name':['mango','kiwi'], 'fruit_color':['orange','green'], 'blob_hash':['mangohash','kiwihash']} 
+
 
     def test_search_metadata(self):
-        try:
-            conn, cur = db_connect('testing')
-            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash1','f/h1'),('hash2','f/h2')")
-            cur.execute("INSERT INTO fruit VALUES(%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s)",('1','fruit','banana','yellow','hash1','2','fruit','mango','yellow','hash2'))
-            assert f.search_metadata('fruit',self.valid1,cur) == {'entry_id':[1], 'blob_type':['fruit'], 'fruit_name':['banana'], 'fruit_color':['yellow'], 'blob_hash':['hash1']}
-            assert f.search_metadata('fruit',{'fruit_color':'yellow'},cur) == {'entry_id':[1,2], 'blob_type':['fruit','fruit'],'fruit_name':['banana','mango'], 'fruit_color':['yellow','yellow'], 'blob_hash':['hash1','hash2']}
-            assert f.search_metadata('fruit',{'fruit_name':'pear'},cur) == None 
-        finally: 
-            cur.close()
-            conn.close()
+        clear_all_tables() 
+        # populate db
+        mango = FruitTable(entry_id=22, blob_type = 'fruit', fruit_name='mango', fruit_color='orange',blob_hash = 'mangohash')
+        kiwi = FruitTable(entry_id = 23, blob_type = 'fruit', fruit_name='kiwi', fruit_color='green',blob_hash = 'kiwihash')
+        with Session() as session:
+            session.add(mango)
+            session.add(kiwi)
+            session.commit()
+        # assert expected
+        assert f.search_metadata('fruit', self.valid1, session) == {'entry_id':[22], 'blob_type':['fruit'],'fruit_name':['mango'], 'fruit_color':['orange'], 'blob_hash':['mangohash']}
+        assert f.search_metadata('fruit', {'blob_type':'fruit'}, session) == {'entry_id':[22,23], 'blob_type':['fruit','fruit'],'fruit_name':['mango','kiwi'], 'fruit_color':['orange','green'], 'blob_hash':['mangohash','kiwihash']} 
+        assert f.search_metadata('fruit', {'fruit_name':'pear'},session) ==  {}
+
             
 class TestFnsUpdate:
     clear_all_tables()
@@ -203,19 +189,14 @@ class TestFnsUpdate:
         WHEN entry id is passed fn
         THEN assert returns dict of metadata associated with that id
         """
-        try:
-            conn, cur = db_connect('testing')
-            #populate db with old entry
-            cur.execute("INSERT INTO blob(blob_hash, blob_path) VALUES('hash5','f/h5')")
-            cur.execute("INSERT INTO fruit VALUES('55','fruit','banana','green','hash5')")
-            # test fn
-            current_metadata = f.get_current_metadata('fruit','55',cur)
-            assert current_metadata == {'blob_hash': 'hash5', 'entry_id': 55, 'blob_type':'fruit', 'fruit_color': 'green', 'fruit_name': 'banana'}
-        finally: 
-            cur.execute('DELETE FROM fruit')
-            cur.execute('DELETE FROM blob')
-            cur.close()
-            conn.close()
+        clear_all_tables()
+        mango = FruitTable(entry_id=55, blob_type = 'fruit', fruit_name='mango', fruit_color='orange',blob_hash = 'mangohash')
+        with Session() as session:
+            session.add(mango)
+            session.commit() 
+        current_metadata = f.get_current_metadata('fruit', 55, session)
+        assert current_metadata == {'blob_hash': 'mangohash', 'entry_id': 55, 'blob_type':'fruit', 'fruit_color': 'orange', 'fruit_name': 'mango'}
+       
         
 
     def test_make_full_update_dict(self):
@@ -231,16 +212,14 @@ class TestFnsUpdate:
 
 def test_retrieve_paths():
     clear_all_tables()
-    try:
-        # populate db with blob and metadata
-        conn, cur = db_connect('testing')
-        cur.execute('INSERT INTO blob VALUES(%s, %s, %s)',('hash1','f/pineapple','saved'))
-        cur.execute('INSERT INTO fruit(entry_id, fruit_name, blob_hash) VALUES(%s,%s,%s)',(101,'pineapple','hash1'))
-        search_dict = {'blob_type':'fruit','entry_id':101}
-        assert f.retrieve_paths(search_dict, cur) == ['f/pineapple']
-    finally:
-        cur.close()
-        conn.close()
+    pineapple_blob = BlobTable(blob_hash = 'hash1', blob_path= 'f/pineapple')
+    pineapple_md = FruitTable(entry_id=101, blob_type = 'fruit', fruit_name='pineapple', fruit_color='orange',blob_hash = 'hash1')
+    with Session() as session:
+        session.add(pineapple_blob)
+        session.add(pineapple_md) 
+        session.commit() 
+    search_dict = {'blob_type':'fruit','entry_id':101}
+    assert f.retrieve_paths(search_dict, session) == ['f/pineapple']
 
 
 def test_clean():

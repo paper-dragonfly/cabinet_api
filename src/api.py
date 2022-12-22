@@ -1,21 +1,21 @@
-import json 
-import os
 import pdb 
 from http import HTTPStatus
 
 from flask import Flask, request
-from pydantic import ValidationError
 import yaml
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker 
 
-from src.api_fns import db_connect
 import src.api_fns as f
-from src.classes import BlobPostSchema, BlobPutSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, StorageFnSchema
-from src.constants import blob_classes, BLOB_TYPES, NEW_BLOB, NEW_LOCATION, DUPLICATE
+from src.classes import BlobPostSchema, UpdatePostSchema, Response, RetrieveBlob, Fields, StorageFnSchema
+from src.constants import BLOB_TYPES, NEW_BLOB, DUPLICATE
 
 
 def create_app(env):
     app = Flask(__name__)
-
+    conn_str = f.get_conn_str(env)
+    engine = create_engine(conn_str, echo=True)
+    Session = sessionmaker(bind=engine)
 
     @app.route('/health', methods=['GET'])
     def health():
@@ -36,91 +36,81 @@ def create_app(env):
         return Response(body={'envs':envs}).json() 
 
 
-    @app.route('/storage_locations', methods=['POST'])
-    def storage_locations():
-        try:
-            conn, cur = db_connect(env=env)
-            try: 
-                new_blob_unsaved = StorageFnSchema.parse_obj(request.get_json())
-                # confirm metadata matches blob_type schema
-                blob_type = new_blob_unsaved.metadata['blob_type']
-                blob_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_unsaved.metadata)
-                blob_cabinet_relationship = f.check_for_duplicate(new_blob_unsaved, cur)
-                if blob_cabinet_relationship == DUPLICATE:
-                    return Response(status_code=400, error_message='BlobDuplication: blob already saved in requested location').json()
-                save_paths = f.generate_paths(new_blob_unsaved)
-                return Response(body={'paths':save_paths, 'new':blob_cabinet_relationship}).json()
-            except Exception as e:
-                    return Response(status_code=400, error_message= e).json()
-        finally:
-            cur.close()
-            conn.close()
+    @app.route('/storage_urls', methods=['POST'])
+    def storage_urls():
+        try: 
+            new_blob_unsaved = StorageFnSchema.parse_obj(request.get_json())
+            # confirm metadata matches blob_type schema - will throw error if fails
+            blob_type = new_blob_unsaved.metadata['blob_type']
+            blob_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_unsaved.metadata)
+            # confirm not duplicate
+            with Session() as session:
+                blob_cabinet_relationship = f.check_for_duplicate(new_blob_unsaved, session)
+            if blob_cabinet_relationship == DUPLICATE:
+                return Response(status_code=400, error_message='BlobDuplication: blob already saved in requested location').json()
+            save_paths = f.generate_paths(new_blob_unsaved)
+            return Response(body={'paths':save_paths, 'new':blob_cabinet_relationship}).json()
+        except Exception as e:
+            return Response(status_code=400, error_message= e).json()
             
 
     @app.route('/blob', methods=['GET', 'POST'])
-    def blob(): 
-        try:
-            conn, cur = db_connect(env=env)
+    def blob():     
 
-            if request.method == 'GET':
+        if request.method == 'GET':
+            try: 
                 user_search = request.args.to_dict()
                 if not 'blob_type' in user_search.keys():
                     return Response(status_code=400,error_message='Must provide blob_type').json()
                 if not f.validate_search_fields(user_search):
                     return Response(status_code= 400,error_message= 'KeyError: invalid blob_type or search field').json()
                 # blob_type only - return all entries for blob_type
-                elif len(user_search) == 1:
-                    matches = f.all_entries(user_search['blob_type'], cur)
+                with Session() as session:    
+                    if len(user_search) == 1:
+                        matches = f.all_entries(user_search['blob_type'], session)
+                        return Response(body= matches).json()
+                    else:
+                        matches:dict = f.search_metadata(user_search['blob_type'],user_search,session)
                     return Response(body= matches).json()
-                else:
-                    matches:dict = f.search_metadata(user_search['blob_type'],user_search,cur)
-                    return Response(body= matches).json()
+            except Exception as e:
+                return Response(status_code=500, error_message= f'UnexpectedError: {e}').json
 
-            elif request.method == 'POST':
-                try:
-                    new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
-                    blob_type = new_blob_info.metadata['blob_type']
-                    parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
-                    # add paths to blob table (id = hash, path = blobs/blob_type/hash)
-                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,cur)
+        elif request.method == 'POST':
+            try:
+                new_blob_info = BlobPostSchema.parse_obj(request.get_json()) 
+                blob_type = new_blob_info.metadata['blob_type']
+                parsed_metadata = BLOB_TYPES[blob_type].parse_obj(new_blob_info.metadata)
+                # add paths to blob table (id = hash, path = blobs/blob_type/hash)
+                with Session() as session:    
+                    paths_added = f.add_blob_paths(parsed_metadata.blob_hash, new_blob_info.paths ,session)
                     if not paths_added:
                         return Response(status_code=500, error_message='Error adding paths').json()
                     # add metadata entry to db
                     if new_blob_info.new == NEW_BLOB:
-                        entry_id = f.add_entry(parsed_metadata, cur)
+                        entry_id = f.add_entry(parsed_metadata, session)
                     else: #id most up-to-date metadata for blob
-                        entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},cur)['entry_id'])
+                        entry_id = max(f.search_metadata(blob_type, {'blob_hash':parsed_metadata.blob_hash},session)['entry_id'])
                     return Response(body={'entry_id':entry_id}).json()
-                except Exception as e:
-                    return Response(status_code=400, error_message= e).json()
-        except:
-            return Response(status_code=500, error_message='UnexpectedError').json
-        finally:
-            cur.close()
-            conn.close()
+            except Exception as e:
+                return Response(status_code=400, error_message= e).json()
 
     
     #TODO catch errors at /update how?
     @app.route('/blob/update', methods=['POST'])
     def update():
-        try:
-            conn, cur = db_connect(env)
+        with Session() as session:
             try:
                 post_data = UpdatePostSchema.parse_obj(request.get_json())
                 validation = f.validate_update_fields(post_data.blob_type, post_data.update_data)
                 if not validation['valid']:
                     return Response(status_code= 400,error_message= validation['error']).json()
-                current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,cur)
+                current_metadata = f.get_current_metadata(post_data.blob_type,post_data.current_entry_id,session)
                 full_update_inst = BLOB_TYPES[post_data.blob_type].parse_obj(f.make_full_update_dict(post_data.update_data, current_metadata))
-                updated_entry_id = f.add_entry(full_update_inst, cur)
+                updated_entry_id = f.add_entry(full_update_inst, session)
                 return Response(body={'entry_id': updated_entry_id}).json()
             except (TypeError, ValueError) as e: 
                     return Response(status_code=400, error_message= e).json()
-        except Exception as e:
-            return Response(status_code=500, error_message= e.json()).json()
-        finally:
-            cur.close()
-            conn.close()
+        
 
 
     @app.route('/fields',methods=['GET'])
@@ -158,17 +148,11 @@ def create_app(env):
         except (TypeError, ValueError) as e: 
             return Response(status_code=400, error_message= e).json()
         if search_args.blob_type not in BLOB_TYPES.keys():
-            return Response(status_code=400, error_message= "BlobTypeError: invalid blob_tpype").json()
+            return Response(status_code=400, error_message= "BlobTypeError: invalid blob_type").json()
         # get blob paths
-        try:
-            conn, cur = db_connect(env=env)
-            paths = f.retrieve_paths(search_dict,cur)
+        with Session() as session:
+            paths = f.retrieve_paths(search_dict,session)
             return Response(body={'paths':paths}).json()
-        except: 
-            return Response(status_code=500, error_message='ConnectionError').json()
-        finally:
-            cur.close()
-            conn.close()
             
     return app
 
