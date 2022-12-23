@@ -6,47 +6,41 @@ from hashlib import sha256
 
 import pytest
 
-from src.api import db_connect
 import src.api as api
-from tests.conftest import clear_all_tables, Session
+from tests.conftest import clear_all_tables, Session, client
 from src.constants import NEW_LOCATION, NEW_BLOB, DUPLICATE
 from src.database import BlobTable, FruitTable
 
 
-def _test_fn(client):
-    # try connecting to db
-    # populate db with test data
-    # send http request and capture response
-    # assert response is as expected
-    # clear the db
-    # close conn and cur
-    pass
+def test_read_health():
+    resp = client.get("/health")
+    assert resp.status_code == 200
 
 
-def test_home(client):
+def test_read_home():
     """
     GIVEN a flask app
     WHEN a GET request is submitted to /home
     THEN assert returns expected string
     """
     response = client.get("/")
-    assert response.data.decode("ASCII") == "WELCOME TO CABINET"
+    assert response.json() == "WELCOME TO CABINET"
 
 
-def test_store_envs(client):
+def test_read_store_envs():
     """
     GIVEN a flask app
     WHEN a GET request is submitted to /store_envs
     THEN assert returns expected lists of hosts
     """
     response = client.get("/store_envs?blob_type=fruit")
-    assert json.loads(response.data.decode("ASCII"))["body"]["envs"] == [
+    assert json.loads(response.json())["body"]["envs"] == [
         "testing",
         "dev",
     ]
 
 
-def test_storage_urls(client):
+def test_create_storage_urls():
     """
     GIVEN a flask app
     WHEN a POST request with blob metadata and storage_ens is sent to /storage_urls
@@ -62,17 +56,16 @@ def test_storage_urls(client):
     envs = ["testing", "dev"]
     api_resp = client.post(
         "/storage_urls",
-        data=json.dumps({"metadata": metadata, "storage_envs": envs}),
-        content_type="application/json",
+        json={"metadata": metadata, "storage_envs": envs},
     )
-    assert json.loads(api_resp.data.decode("ascii"))["body"]["new"] == NEW_BLOB
-    assert set(json.loads(api_resp.data.decode("ascii"))["body"]["paths"]) == set(
+    assert json.loads(api_resp.json())["body"]["new"] == NEW_BLOB
+    assert set(json.loads(api_resp.json())["body"]["paths"]) == set(
         ["blobs/test/fruit/phash", "gs://cabinet22_fruit/phash", "blobs/fruit/phash"]
     )
 
 
 class TestBlob:
-    def test_blob_get(self, client):
+    def test_read_blob(self):
         """
         GIVEN a flask app
         WHEN a GET request is sent to /blob containing search parameters as url query args
@@ -127,47 +120,39 @@ class TestBlob:
             "/blob?blob_type=fruit&fruit_name=banana&fruit_color=red"
         )
         # check resp is as expected
-        assert (
-            json.loads(r_no_args.data.decode("ASCII"))["error_message"]
-            == "Must provide blob_type"
-        )
-        assert (
-            json.loads(r_no_type.data.decode("ASCII"))["error_message"]
-            == "Must provide blob_type"
-        )
-        assert json.loads(r_return_all_entries_of_blobtype.data.decode("ASCII"))[
-            "body"
-        ] == {
+        assert json.loads(r_no_args.json())["error_message"] == "Must provide blob_type"
+        assert json.loads(r_no_type.json())["error_message"] == "Must provide blob_type"
+        assert json.loads(r_return_all_entries_of_blobtype.json())["body"] == {
             "entry_id": [1, 2, 3, 4],
             "blob_type": ["fruit", "fruit", "fruit", "fruit"],
             "fruit_name": ["banana", "apple", "strawberry", "banana"],
             "fruit_color": ["yellow", "red", "red", "green"],
             "blob_hash": ["hash1", "hash2", "hash3", "hash1"],
         }
-        assert json.loads(response1.data.decode("ASCII"))["body"] == {
+        assert json.loads(response1.json())["body"] == {
             "entry_id": [2],
             "blob_type": ["fruit"],
             "fruit_name": ["apple"],
             "fruit_color": ["red"],
             "blob_hash": ["hash2"],
         }
-        assert json.loads(response2.data.decode("ASCII"))["body"] == {
+        assert json.loads(response2.json())["body"] == {
             "entry_id": [2, 3],
             "blob_type": ["fruit", "fruit"],
             "fruit_name": ["apple", "strawberry"],
             "fruit_color": ["red", "red"],
             "blob_hash": ["hash2", "hash3"],
         }
-        assert json.loads(response3.data.decode("ASCII"))["body"] == {
+        assert json.loads(response3.json())["body"] == {
             "entry_id": [1, 4],
             "blob_type": ["fruit", "fruit"],
             "fruit_name": ["banana", "banana"],
             "fruit_color": ["yellow", "green"],
             "blob_hash": ["hash1", "hash1"],
         }
-        assert json.loads(response4.data.decode("ASCII"))["body"] == {}
+        assert json.loads(response4.json())["body"] == {}
 
-    def test_blob_post(self, client):
+    def test_create_blob(self):
         """
         GIVEN a flask app
         WHEN a POST request with entry metadata is submitted to /blob
@@ -175,29 +160,23 @@ class TestBlob:
         """
         clear_all_tables()
         # create blob_hash
-        test_blob = "a perfectly passionate poem about pineapples"
         b_hash = "hash1_pineapple"
         # POST to API: /blob endpoint, capture response
         response = client.post(
             "/blob",
-            data=json.dumps(
-                {
-                    "metadata": {
-                        "blob_type": "fruit",
-                        "fruit_name": "pineapple",
-                        "fruit_color": "yellow",
-                        "blob_hash": b_hash,
-                    },
-                    "paths": ["path/to/blob", "gs://blob_path/hash"],
-                    "new": NEW_BLOB,
-                }
-            ),
-            content_type="application/json",
+            json={
+                "metadata": {
+                    "blob_type": "fruit",
+                    "fruit_name": "pineapple",
+                    "fruit_color": "yellow",
+                    "blob_hash": b_hash,
+                },
+                "paths": ["path/to/blob", "gs://blob_path/hash"],
+                "new": NEW_BLOB,
+            },
         )
         # check API response is of expected type
-        assert (
-            type(json.loads(response.data.decode("ASCII"))["body"]["entry_id"]) == int
-        )
+        assert type(json.loads(response.json())["body"]["entry_id"]) == int
         # check entry is in db
         with Session() as session:
             resp = session.query(FruitTable).filter_by(fruit_name="pineapple").all()
@@ -211,21 +190,18 @@ class TestBlob:
             # adding new save location for existing blob
             response = client.post(
                 "/blob",
-                data=json.dumps(
-                    {
-                        "metadata": {
-                            "blob_type": "fruit",
-                            "fruit_name": "pineapple",
-                            "fruit_color": "yellow",
-                            "blob_hash": b_hash,
-                        },
-                        "paths": ["new/path/to/blob"],
-                        "new": NEW_LOCATION,
-                    }
-                ),
-                content_type="application/json",
+                json={
+                    "metadata": {
+                        "blob_type": "fruit",
+                        "fruit_name": "pineapple",
+                        "fruit_color": "yellow",
+                        "blob_hash": b_hash,
+                    },
+                    "paths": ["new/path/to/blob"],
+                    "new": NEW_LOCATION,
+                },
             )
-            assert json.loads(response.data.decode("ASCII"))["body"]["entry_id"] == e_id
+            assert json.loads(response.json())["body"]["entry_id"] == e_id
             path_count = session.query(BlobTable).filter_by(blob_hash=b_hash).count()
             metadata_count = (
                 session.query(FruitTable).filter_by(blob_hash=b_hash).count()
@@ -235,7 +211,7 @@ class TestBlob:
 
 
 class TestUpdate:
-    def test_update(self, client):
+    def test_create_update(self):
         clear_all_tables()
         with Session() as session:
             # populate db
@@ -280,34 +256,33 @@ class TestUpdate:
             # submit POST request with update
             r_valid1 = client.post(
                 "/blob/update",
-                data=json.dumps(
-                    {
-                        "blob_type": "fruit",
-                        "current_entry_id": e_id,
-                        "update_data": {"fruit_color": "silver"},
-                    }
-                ),
-                content_type="application/json",
+                json={
+                    "blob_type": "fruit",
+                    "current_entry_id": e_id,
+                    "update_data": {"fruit_color": "silver"},
+                },
             )
-            # invalid or abscent:  blob_type,  entry_id, feild_change for given blob_type
+            # TODO: invalid or abscent:  blob_type,  entry_id, feild_change for given blob_type
             # assert returns expected
-            decode_valid1 = json.loads(r_valid1.data.decode("ASCII"))
-            assert type(decode_valid1["body"]["entry_id"]) == int
-            # TODO: use select to make sure new entry is there
+            decode_valid1 = json.loads(r_valid1.json())
+            e_id = decode_valid1["body"]["entry_id"]
+            assert type(e_id) == int
+            color = session.query(FruitTable.fruit_color).filter_by(entry_id=e_id)[0][0]
+            assert color == "silver"
 
 
-def test_get_fields(client):
+def test_read_fields():
     valid_resp = client.get("/fields?blob_type=fruit")
-    invalid1_resp = client.get("/fields?invalidarg=fruit")
+    # invalid1_resp = client.get("/fields?invalidarg=fruit")
     invalid2_resp = client.get("/fields?blob_type=faketype")
     valid2_resp = client.get("/fields?blob_type=return_all_blob_types")
-    assert json.loads(valid_resp.data.decode("ascii"))["status_code"] == 200
-    assert json.loads(invalid1_resp.data.decode("ASCII"))["status_code"] == 400
-    assert json.loads(invalid2_resp.data.decode("ASCII"))["status_code"] == 400
-    assert json.loads(valid2_resp.data.decode("ascii"))["status_code"] == 200
+    assert json.loads(valid_resp.json())["status_code"] == 200
+    # assert json.loads(invalid1_resp.json())["status_code"] == 400
+    assert json.loads(invalid2_resp.json())["status_code"] == 400
+    assert json.loads(valid2_resp.json())["status_code"] == 200
 
 
-def test_retrieve(client):  # TODO Need to write supporting end point and library method
+def test_retrieve():  # TODO Need to write supporting end point and library method
     clear_all_tables()
     with Session() as session, session.begin():
         pblob = BlobTable(blob_hash="hash1", blob_path="f/hash1")
@@ -321,8 +296,8 @@ def test_retrieve(client):  # TODO Need to write supporting end point and librar
         session.add_all([pblob, pineapple])
     # send request, capture resp
     valid_resp = client.get("/blob/fruit/101")
-    assert json.loads(valid_resp.data.decode("ascii"))["status_code"] == 200
-    assert json.loads(valid_resp.data.decode("ascii"))["body"] == {"paths": ["f/hash1"]}
+    assert json.loads(valid_resp.json())["status_code"] == 200
+    assert json.loads(valid_resp.json())["body"] == {"paths": ["f/hash1"]}
 
 
 def test_clean():
