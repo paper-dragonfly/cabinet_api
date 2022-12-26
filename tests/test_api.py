@@ -34,7 +34,7 @@ def test_read_store_envs():
     THEN assert returns expected lists of hosts
     """
     response = client.get("/store_envs?blob_type=fruit")
-    assert json.loads(response.json())["body"]["envs"] == [
+    assert response.json()["body"]["envs"] == [
         "testing",
         "dev",
     ]
@@ -58,8 +58,8 @@ def test_create_storage_urls():
         "/storage_urls",
         json={"metadata": metadata, "storage_envs": envs},
     )
-    assert json.loads(api_resp.json())["body"]["new"] == NEW_BLOB
-    assert set(json.loads(api_resp.json())["body"]["paths"]) == set(
+    assert api_resp.json()["body"]["new"] == NEW_BLOB
+    assert set(api_resp.json()["body"]["paths"]) == set(
         ["blobs/test/fruit/phash", "gs://cabinet22_fruit/phash", "blobs/fruit/phash"]
     )
 
@@ -120,37 +120,37 @@ class TestBlob:
             "/blob?blob_type=fruit&fruit_name=banana&fruit_color=red"
         )
         # check resp is as expected
-        assert json.loads(r_no_args.json())["error_message"] == "Must provide blob_type"
-        assert json.loads(r_no_type.json())["error_message"] == "Must provide blob_type"
-        assert json.loads(r_return_all_entries_of_blobtype.json())["body"] == {
+        assert r_no_args.json()["error_message"] == "Must provide blob_type"
+        assert r_no_type.json()["error_message"] == "Must provide blob_type"
+        assert r_return_all_entries_of_blobtype.json()["body"] == {
             "entry_id": [1, 2, 3, 4],
             "blob_type": ["fruit", "fruit", "fruit", "fruit"],
             "fruit_name": ["banana", "apple", "strawberry", "banana"],
             "fruit_color": ["yellow", "red", "red", "green"],
             "blob_hash": ["hash1", "hash2", "hash3", "hash1"],
         }
-        assert json.loads(response1.json())["body"] == {
+        assert response1.json()["body"] == {
             "entry_id": [2],
             "blob_type": ["fruit"],
             "fruit_name": ["apple"],
             "fruit_color": ["red"],
             "blob_hash": ["hash2"],
         }
-        assert json.loads(response2.json())["body"] == {
+        assert response2.json()["body"] == {
             "entry_id": [2, 3],
             "blob_type": ["fruit", "fruit"],
             "fruit_name": ["apple", "strawberry"],
             "fruit_color": ["red", "red"],
             "blob_hash": ["hash2", "hash3"],
         }
-        assert json.loads(response3.json())["body"] == {
+        assert response3.json()["body"] == {
             "entry_id": [1, 4],
             "blob_type": ["fruit", "fruit"],
             "fruit_name": ["banana", "banana"],
             "fruit_color": ["yellow", "green"],
             "blob_hash": ["hash1", "hash1"],
         }
-        assert json.loads(response4.json())["body"] == {}
+        assert response4.json()["body"] == {}
 
     def test_create_blob(self):
         """
@@ -176,7 +176,7 @@ class TestBlob:
             },
         )
         # check API response is of expected type
-        assert type(json.loads(response.json())["body"]["entry_id"]) == int
+        assert type(response.json()["body"]["entry_id"]) == int
         # check entry is in db
         with Session() as session:
             resp = session.query(FruitTable).filter_by(fruit_name="pineapple").all()
@@ -201,7 +201,7 @@ class TestBlob:
                     "new": NEW_LOCATION,
                 },
             )
-            assert json.loads(response.json())["body"]["entry_id"] == e_id
+            assert response.json()["body"]["entry_id"] == e_id
             path_count = session.query(BlobTable).filter_by(blob_hash=b_hash).count()
             metadata_count = (
                 session.query(FruitTable).filter_by(blob_hash=b_hash).count()
@@ -264,7 +264,7 @@ class TestUpdate:
             )
             # TODO: invalid or abscent:  blob_type,  entry_id, feild_change for given blob_type
             # assert returns expected
-            decode_valid1 = json.loads(r_valid1.json())
+            decode_valid1 = r_valid1.json()
             e_id = decode_valid1["body"]["entry_id"]
             assert type(e_id) == int
             color = session.query(FruitTable.fruit_color).filter_by(entry_id=e_id)[0][0]
@@ -276,10 +276,10 @@ def test_read_fields():
     # invalid1_resp = client.get("/fields?invalidarg=fruit")
     invalid2_resp = client.get("/fields?blob_type=faketype")
     valid2_resp = client.get("/fields?blob_type=return_all_blob_types")
-    assert json.loads(valid_resp.json())["status_code"] == 200
+    assert valid_resp.json()["status_code"] == 200
     # assert json.loads(invalid1_resp.json())["status_code"] == 400
-    assert json.loads(invalid2_resp.json())["status_code"] == 400
-    assert json.loads(valid2_resp.json())["status_code"] == 200
+    assert invalid2_resp.json()["status_code"] == 400
+    assert valid2_resp.json()["status_code"] == 200
 
 
 def test_retrieve():  # TODO Need to write supporting end point and library method
@@ -296,8 +296,8 @@ def test_retrieve():  # TODO Need to write supporting end point and library meth
         session.add_all([pblob, pineapple])
     # send request, capture resp
     valid_resp = client.get("/blob/fruit/101")
-    assert json.loads(valid_resp.json())["status_code"] == 200
-    assert json.loads(valid_resp.json())["body"] == {"paths": ["f/hash1"]}
+    assert valid_resp.json()["status_code"] == 200
+    assert valid_resp.json()["body"] == {"paths": ["f/hash1"]}
 
 
 def test_clean():

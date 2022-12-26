@@ -1,5 +1,13 @@
 psycopg2-binary
 pyyaml
-flask
 pydantic 
+uvicorn
 gunicorn
+sqlalchemy
+starlette
+httpx
+google-api-core
+google-cloud-core
+google-auth
+google-cloud-storage
+alembic 

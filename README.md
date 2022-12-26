@@ -1,7 +1,7 @@
 ![Cabinet Logo](rubix2.jpeg)
 
 # cabinet_api
-Flask API for Cabinet blob-storage platfrom 
+FastAPI for Cabinet blob-storage platfrom 
 
 # Description 
 Cabinet is a flexible blob-storage system that stores blobs and their associated metadata. It allows users to easily save and search for blobs based on their metadata values rather than file paths. The cabinet_api interfaces between the cabinet-sdk client and Cabinet postgreSQL database. 
@@ -12,8 +12,7 @@ Cabinet is a flexible blob-storage system that stores blobs and their associated
 1. Download API repo: https://github.com/paper-dragonfly/cabinet_api
 2. Install dependencies with `pip install -r requirements.txt`
 3. Run API:
-    *  `python -m flask --app "src.api:create_app('<ENVIRONMENT>')" run` (development/testing) 
-    *  `gunicorn --bind 0.0.0.0:5000 "src.api:create_app('<ENVIRONMENT>')"` (production) 
+    *  `gunicorn --bind 0.0.0.0:5000 "src.api:create_app(<ENVIRONMENT>)" -w 4 -k uvicorn.workers.UvicornWorker"` 
 5. Download cabinet-sdk with: `pip install -i https://test.pypi.org/simple/ cabinet-sdk`
 6. Create empty postgreSQL database called 'cabinet' and another called 'cabinet_test' 
     * See Create Blob_types section below for instructions on populating these databases
