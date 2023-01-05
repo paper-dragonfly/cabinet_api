@@ -6,7 +6,6 @@ import pytest
 
 import psycopg2
 
-from src.api_fns import db_connect
 import src.api_fns as f
 from tests.conftest import clear_all_tables, Session
 from src.classes import Fruit, StorageFnSchema
@@ -26,20 +25,6 @@ class TestConnections:
         """
         assert len(re.findall("cabinet_test$", f.get_conn_str("testing"))) == 1
         assert len(re.findall("cabinet$", f.get_conn_str("dev_local"))) == 1
-
-    # def test_db_connect(self):
-    #     """
-    #     GIVEN the db_connect fn
-    #     WHEN a dev env is passed to fn
-    #     THEN assert a connection and cursor are returned
-    #     """
-    #     try:
-    #         conn, cur = f.db_connect('testing')
-    #         assert type(conn) == psycopg2.extensions.connection
-    #         assert type(cur) == psycopg2.extensions.cursor
-    #     finally:
-    #         conn.close()
-    #         cur.close()
 
 
 class TestInsert:
