@@ -12,7 +12,10 @@ Cabinet is a flexible blob-storage system that stores blobs and their associated
 1. Download API repo: https://github.com/paper-dragonfly/cabinet_api
 2. Install dependencies with `pip install -r requirements.txt`
 3. Run API:
-    *  `gunicorn --bind 0.0.0.0:5000 "src.api:create_app(<ENVIRONMENT>)" -w 4 -k uvicorn.workers.UvicornWorker"` 
+    *  `gunicorn --bind 0.0.0.0:5000 "src.api:create_app('<ENVIRONMENT>')" -w 4 -k uvicorn.workers.UvicornWorker` 
+    OR: use environment variable ENV to set arg for create_app fn
+    * `export ENV = "<ENVIRONMENT>"` 
+    * `uvicorn --factory example:create_app` 
 5. Download cabinet-sdk with: `pip install -i https://test.pypi.org/simple/ cabinet-sdk`
 6. Create empty postgreSQL database called 'cabinet' and another called 'cabinet_test' 
     * See Create Blob_types section below for instructions on populating these databases

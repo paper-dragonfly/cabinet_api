@@ -14,9 +14,6 @@ engine = create_engine("postgresql://katcha@localhost:5432/cabinet_test", echo=T
 Session = sessionmaker(bind=engine)
 
 client = TestClient(app)
-# @pytest.fixture
-# def client():  # sends the HTTP requests
-#     return app.test_client()
 
 
 def clear_all_tables():

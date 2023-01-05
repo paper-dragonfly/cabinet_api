@@ -1,6 +1,7 @@
 import pdb
 from http import HTTPStatus
 from typing import Union
+import os
 
 import yaml
 from sqlalchemy import create_engine
@@ -17,8 +18,10 @@ from src.classes import (
 )
 from src.constants import BLOB_TYPES, NEW_BLOB, DUPLICATE
 
+ENV = os.getenv("ENV")
 
-def create_app(env):
+
+def create_app(env=ENV):
     # app = Flask(__name__)
     app = FastAPI()
     conn_str = f.get_conn_str(env)
@@ -27,7 +30,7 @@ def create_app(env):
 
     @app.get("/health")
     def read_health():
-        return {"status": HTTPStatus.OK}
+        return {"API status": HTTPStatus.OK}
 
     @app.get("/")
     def read_home():
@@ -74,8 +77,8 @@ def create_app(env):
                     status_code=400,
                     error_message="KeyError: invalid blob_type or search field",
                 )
-            # blob_type only - return all entries for blob_type
             with Session() as session:
+                # blob_type only - return all entries for blob_type
                 if len(user_search) == 1:
                     matches = f.all_entries(user_search["blob_type"], session)
                     return Response(body=matches)
